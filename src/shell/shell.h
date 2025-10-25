@@ -5,5 +5,6 @@
 #define MAX_ARGS 16
 
 void shell_start(void);
+void cmd_theme(int argc, char *argv[]);
 
 #endif

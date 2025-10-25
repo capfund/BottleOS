@@ -36,8 +36,10 @@ static void shell_execute_command(int argc, char *argv[]) {
     } else if (strcmp(argv[0], "bye") == 0 || strcmp(argv[0], "exit") == 0 ||
                strcmp(argv[0], "shutdown") == 0) {
       cmd_bye(argc, argv);
+    } else if (strcmp(argv[0], "theme") == 0) {
+      cmd_theme(argc, argv);
     } else {
-      vga_putstr("Unknown command\n", WHITE_ON_BLACK);
+      vga_putstr("Unknown command\n", color_white_on_black());
     }
   }
 }
@@ -45,7 +47,7 @@ static void shell_execute_command(int argc, char *argv[]) {
 static void shell_handle_input(char c) {
   if (c == '\n') {
     input_buffer[input_pos] = '\0';
-    vga_putchar('\n', WHITE_ON_BLACK);
+    vga_putchar('\n', color_white_on_black());
 
     char *argv[MAX_ARGS];
     int argc;
@@ -53,7 +55,7 @@ static void shell_handle_input(char c) {
     shell_execute_command(argc, argv);
 
     input_pos = 0;
-    vga_putstr("> ", WHITE_ON_BLACK);
+    vga_putstr("> ", color_white_on_black());
   } else if (c == '\b') {
     if (input_pos > 0) {
       input_pos--;
@@ -64,7 +66,7 @@ static void shell_handle_input(char c) {
       } else if (row > 0) {
         vga_set_cursor(row - 1, VGA_MEM_WIDTH - 1);
       }
-      vga_putchar(' ', WHITE_ON_BLACK);
+      vga_putchar(' ', color_white_on_black());
       if (col > 0) {
         vga_set_cursor(row, col - 1);
       } else if (row > 0) {
@@ -74,14 +76,14 @@ static void shell_handle_input(char c) {
   } else {
     if (input_pos < INPUT_BUFFER_SIZE - 1) {
       input_buffer[input_pos++] = c;
-      vga_putchar(c, WHITE_ON_BLACK);
+      vga_putchar(c, color_white_on_black());
     }
   }
 }
 
 void shell_start(void) {
 
-  vga_putstr("> ", WHITE_ON_BLACK);
+  vga_putstr("> ", color_white_on_black());
 
   while (1) {
     unsigned char scancode = keyboard_get_scancode();
@@ -99,8 +101,9 @@ void shell_start(void) {
       switch (c) {
       case 'c': // Ctrl+C clears input
         input_pos = 0;
-        vga_putchar('\n', WHITE_ON_BLACK);
-        vga_putstr("> ", WHITE_ON_BLACK);
+        vga_putstr("> ", color_white_on_black());
+        vga_putchar('\n', color_white_on_black());
+
         continue;
       case 'a': // Ctrl+A moves cursor to start
         input_pos = 0;
