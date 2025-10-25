@@ -1,0 +1,9 @@
+#ifndef COMMANDS_H
+#define COMMANDS_H
+
+void cmd_hello(void);
+void cmd_clear(void);
+void cmd_echo(int argc, char *argv[]);
+int cmd_bye(int argc, char *argv[]);
+
+#endif
