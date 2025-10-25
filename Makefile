@@ -13,10 +13,12 @@ ARCH := i386
 ENTRY_POINT = src/entry.asm
 ENTRY_OBJ = $(BUILD_DIR)/entry.o
 
-KERNEL_SRC = $(wildcard src/*.c)
+# Find all C source files recursively
+KERNEL_SRC = $(shell find src -name "*.c")
 KERNEL_OBJ = $(patsubst src/%.c, $(BUILD_DIR)/%.o, $(KERNEL_SRC))
 
 LINKER_SCRIPT = src/link.ld
+
 
 CFLAGS = -ffreestanding -nostdlib -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -Iinclude
 LINKER_FLAGS =
@@ -50,7 +52,9 @@ $(BUILD_DIR)/kernel.bin: $(ENTRY_OBJ) $(KERNEL_OBJ)
 $(ENTRY_OBJ): $(ENTRY_POINT)
 	$(AS) $(ASFLAGS) -o $@ $<
 
+# Pattern rule for C files - create build directory structure first
 $(BUILD_DIR)/%.o: src/%.c
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c -o $@ $< -MMD -MF $(@:.o=.d)
 
 # ==================================
@@ -64,7 +68,7 @@ $(ISO_IMAGE): $(BUILD_DIR)/kernel.bin $(GRUB_CFG)
 		--product-name="BottleOS" --product-version="1.0"
 
 $(GRUB_CFG):
-	mkdir -p $(ISO_DIR)/boot/grub
+	@mkdir -p $(ISO_DIR)/boot/grub
 	cp $(BUILD_DIR)/kernel.bin $(ISO_DIR)/boot/
 	echo 'set timeout=0' > $(GRUB_CFG)
 	echo 'set default=0' >> $(GRUB_CFG)
@@ -88,9 +92,10 @@ run-iso: iso
 # ==================================
 
 dirs:
-	mkdir -p $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)
 
 clean:
 	rm -rf $(BUILD_DIR)
 
--include $(wildcard $(BUILD_DIR)/*.d)
+# Include dependency files
+-include $(wildcard $(BUILD_DIR)/**/*.d)
