@@ -1,1 +1,1 @@
-qemu-system-i386 -cdrom build/BottleOS.iso -hda src/disk.img
+qemu-system-i386 -kernel build/kernel.bin -initrd src/disk.img

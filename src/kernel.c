@@ -32,9 +32,6 @@ void kprint_num(uint32_t n) {
 
 void kernel_main(uint32_t magic, uint32_t addr) {
     (void)magic;
-    vga_clear_screen();
-    vga_putstr("Welcome to BottleOS Shell [light, testing branch] \n", color_green_on_black());
-
     multiboot_info_t *mbi = (multiboot_info_t *)addr;
 
     if (mbi->mods_count > 0) {
@@ -48,6 +45,8 @@ void kernel_main(uint32_t magic, uint32_t addr) {
     } else {
         vga_putstr("No modules loaded.\n", color_green_on_black());
     }
+    vga_clear_screen();
+    vga_putstr("Welcome to BottleOS Shell [light, testing branch] \n", color_green_on_black());
     fs_init();
     shell_start();
 }
