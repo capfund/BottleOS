@@ -19,18 +19,19 @@ void kprint_num(uint32_t n) {
     int i = 10;
     buf[11] = 0;
     if (n == 0) {
-        kprint("0");
+        vga_putstr("0", color_green_on_black());
         return;
     }
     while (n > 0 && i >= 0) {
         buf[i--] = '0' + (n % 10);
         n /= 10;
     }
-    kprint(&buf[i+1]);
+    vga_putstr(&buf[i+1], color_green_on_black());
 }
 
 
-void kernel_main(void) {
+void kernel_main(uint32_t magic, uint32_t addr) {
+    (void)magic;
     vga_clear_screen();
     vga_putstr("Welcome to BottleOS Shell [light, testing branch] \n", color_green_on_black());
 
