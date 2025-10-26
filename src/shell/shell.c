@@ -4,6 +4,7 @@
 #include "../kernel.h"
 #include "../keyboard/keyboard.h"
 #include "../vga/vga.h"
+#include "../fs/fs.h"
 
 static char input_buffer[INPUT_BUFFER_SIZE];
 static unsigned int input_pos = 0;
@@ -38,6 +39,14 @@ static void shell_execute_command(int argc, char *argv[]) {
       cmd_bye(argc, argv);
     } else if (strcmp(argv[0], "theme") == 0) {
       cmd_theme(argc, argv);
+    }
+    // fs
+    else if (strcmp(argv[0], "ls") == 0) {
+      cmd_ls();
+    } else if (strcmp(argv[0], "touch") == 0) {
+      cmd_touch(argc, argv);
+    } else if (strcmp(argv[0], "cat") == 0 ) {
+      cmd_cat(argc, argv);
     } else {
       vga_putstr("Unknown command\n", color_white_on_black());
     }

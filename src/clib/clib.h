@@ -7,5 +7,7 @@
 int strcmp(const char *s1, const char *s2);
 size_t strlen(const char *s);
 unsigned char inb(unsigned short port);
+int strncmp(const char *s1, const char *s2, unsigned int n);
+char *strncpy(char *dest, const char *src, unsigned int n);
 
 #endif

@@ -3,6 +3,11 @@
 
 #include <stdint.h>
 
+extern uint8_t *disk_module_addr;
+extern uint32_t disk_module_size;
+
+void set_disk_module(uint32_t start, uint32_t end);
+
 // Dark mode color codes
 #define DARK_WHITE_ON_BLACK 0x0F
 #define DARK_GREEN_ON_BLACK 0x02

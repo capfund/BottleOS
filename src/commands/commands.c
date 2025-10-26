@@ -2,6 +2,7 @@
 #include "../clib/clib.h"
 #include "../kernel.h"
 #include "../vga/vga.h"
+#include "../fs/fs.h"
 
 void cmd_hello() { 
     vga_putstr("Hello, user!\n", color_green_on_black()); 
@@ -52,6 +53,41 @@ void cmd_theme(int argc, char *argv[]) {
         }
     }
 }
+
+void cmd_ls() {
+    fs_list_files();
+}
+
+void cmd_touch(int argc, char *argv[]) {
+    if (argc < 2) {
+        vga_putstr("Usage: touch <filename>\n", 0x0F);
+        return;
+    }
+    fs_create_file(argv[1]);
+}
+
+void cmd_cat(int argc, char **argv) {
+    if (argc < 2) {
+        vga_putstr("Usage: cat <filename>\n", 0x0E);
+        return;
+    }
+
+    char buffer[FS_BLOCK_SIZE];
+    int read_bytes = fs_read_file(argv[1], (uint8_t *)buffer, sizeof(buffer));
+
+    if (read_bytes < 0) {
+        vga_putstr("cat: file not found or read error\n", 0x0C);
+        return;
+    }
+
+    // Print file contents
+    for (int i = 0; i < read_bytes; i++) {
+        vga_putchar(buffer[i], 0x0F);
+    }
+
+    vga_putchar('\n', 0x0F);
+}
+
 
 int cmd_bye(int argc, char *argv[]) {
     (void)argc;

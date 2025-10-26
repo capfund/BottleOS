@@ -1,0 +1,1 @@
+qemu-system-i386 -cdrom build/BottleOS.iso -hda src/disk.img

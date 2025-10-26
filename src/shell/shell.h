@@ -6,5 +6,8 @@
 
 void shell_start(void);
 void cmd_theme(int argc, char *argv[]);
+void cmd_ls(void);
+void cmd_touch(int argc, char *argv[]);
+void cmd_cat(int argc, char *argv[]);
 
 #endif
