@@ -70,6 +70,7 @@ $(ISO_IMAGE): $(BUILD_DIR)/kernel.bin $(GRUB_CFG)
 $(GRUB_CFG):
 	@mkdir -p $(ISO_DIR)/boot/grub
 	cp $(BUILD_DIR)/kernel.bin $(ISO_DIR)/boot/
+	cp src/disk.img $(ISO_DIR)/boot/
 	echo 'set timeout=0' > $(GRUB_CFG)
 	echo 'set default=0' >> $(GRUB_CFG)
 	echo 'menuentry "BottleOS" {' >> $(GRUB_CFG)
