@@ -1,10 +1,10 @@
 #include "shell.h"
 #include "../clib/clib.h"
 #include "../commands/commands.h"
+#include "../fs/fs.h"
 #include "../kernel.h"
 #include "../keyboard/keyboard.h"
 #include "../vga/vga.h"
-#include "../fs/fs.h"
 
 static char input_buffer[INPUT_BUFFER_SIZE];
 static unsigned int input_pos = 0;
@@ -45,8 +45,10 @@ static void shell_execute_command(int argc, char *argv[]) {
       cmd_ls();
     } else if (strcmp(argv[0], "touch") == 0) {
       cmd_touch(argc, argv);
-    } else if (strcmp(argv[0], "cat") == 0 ) {
+    } else if (strcmp(argv[0], "cat") == 0) {
       cmd_cat(argc, argv);
+    } else if (strcmp(argv[0], "write") == 0) {
+      cmd_write(argc, argv);
     } else {
       vga_putstr("Unknown command\n", color_white_on_black());
     }
