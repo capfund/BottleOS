@@ -8,5 +8,6 @@ int cmd_bye(int argc, char *argv[]);
 void cmd_ls(void);
 void cmd_touch(int argc, char *argv[]);
 void cmd_cat(int argc, char *argv[]);
+void cmd_write(int argc, char **argv);
 
 #endif

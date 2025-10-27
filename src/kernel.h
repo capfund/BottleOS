@@ -21,11 +21,15 @@ extern int light_mode;
 
 // Functions to get current colors
 static inline uint8_t color_white_on_black() {
-    return light_mode ? LIGHT_WHITE_ON_BLACK : DARK_WHITE_ON_BLACK;
+  return light_mode ? LIGHT_WHITE_ON_BLACK : DARK_WHITE_ON_BLACK;
 }
 
 static inline uint8_t color_green_on_black() {
-    return light_mode ? LIGHT_GREEN_ON_BLACK : DARK_GREEN_ON_BLACK;
+  return light_mode ? LIGHT_GREEN_ON_BLACK : DARK_GREEN_ON_BLACK;
 }
+
+int k_create_file(const char *name);
+int k_write_file(const char *name, const char *content);
+int k_read_file(const char *name, char *buffer, uint32_t size);
 
 #endif
