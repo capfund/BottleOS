@@ -2,15 +2,19 @@
 #include "../clib/clib.h"
 #include "../fs/fs.h"
 #include "../kernel.h"
-#include "../vga/vga.h"
+// #include "../vga/vga.h"
+#include "../display/display.h"
+#include "../vesa/vesa.h"
 
-void cmd_hello() { vga_putstr("Hello, user!\n", color_green_on_black()); }
+// void cmd_hello() { display_putstr("Hello, user!\n", color_green_on_black()); }
+void cmd_hello() { display_putstr("Hello, user!\n", vesa_rgb(0, 255, 0)); }
 
-void cmd_clear() { vga_clear_screen(); }
+
+void cmd_clear() { display_clear(); }
 
 void cmd_write(int argc, char **argv) {
   if (argc < 3) {
-    vga_putstr("Usage: write <filename> <text>\n", 0x0E);
+    display_putstr("Usage: write <filename> <text>\n", vesa_rgb(255, 0, 0));
     return;
   }
 
@@ -30,9 +34,9 @@ void cmd_write(int argc, char **argv) {
 
   int result = fs_write_file(argv[1], (uint8_t *)content, pos);
   if (result < 0) {
-    vga_putstr("write: error writing file\n", 0x0C);
+    display_putstr("write: error writing file\n", vesa_rgb(255, 0, 0));
   } else {
-    vga_putstr("File written successfully\n", 0x0A);
+    display_putstr("File written successfully\n", vesa_rgb(0,255,0));
   }
 }
 
@@ -44,36 +48,36 @@ void cmd_echo(int argc, char *argv[]) {
     start = 2;
   }
   for (int i = start; i < argc; i++) {
-    vga_putstr(argv[i], color_white_on_black());
+    display_putstr(argv[i], (uint32_t ) color_white_on_black());
     if (i < argc - 1)
-      vga_putchar(' ', color_white_on_black());
+      display_putchar(' ', (uint32_t) color_white_on_black());
   }
   if (newline)
-    vga_putchar('\n', color_white_on_black());
+    display_putchar('\n', (uint32_t) color_white_on_black());
 }
 
 void cmd_theme(int argc, char *argv[]) {
   if (argc < 2) {
-    vga_putstr("Usage: theme -l | -d\n", color_green_on_black());
+    display_putstr("Usage: theme -l | -d\n", (uint32_t) color_green_on_black());
     return;
   }
 
   if (strcmp(argv[1], "-l") == 0) {
     light_mode = 1;
-    vga_clear_screen();
-    vga_putstr("Welcome to BottleOS Shell [light]\n", color_green_on_black());
+    display_clear();
+    display_putstr("Welcome to BottleOS Shell [light]\n", (uint32_t) color_green_on_black());
   } else if (strcmp(argv[1], "-d") == 0) {
     light_mode = 0;
-    vga_clear_screen();
-    vga_putstr("Welcome to BottleOS Shell [dark]\n", color_green_on_black());
+    display_clear();
+    display_putstr("Welcome to BottleOS Shell [dark]\n", (uint32_t) color_green_on_black());
   } else {
     light_mode = !light_mode; // toggle the mode
     if (light_mode) {
-      vga_clear_screen();
-      vga_putstr("Welcome to BottleOS Shell [light]\n", color_green_on_black());
+      display_clear();
+      display_putstr("Welcome to BottleOS Shell [light]\n", (uint32_t) color_green_on_black());
     } else {
-      vga_clear_screen();
-      vga_putstr("Welcome to BottleOS Shell [dark] \n", color_green_on_black());
+      display_clear();
+      display_putstr("Welcome to BottleOS Shell [dark] \n", (uint32_t) color_green_on_black());
     }
   }
 }
@@ -82,7 +86,7 @@ void cmd_ls() { fs_list_files(); }
 
 void cmd_touch(int argc, char *argv[]) {
   if (argc < 2) {
-    vga_putstr("Usage: touch <filename>\n", 0x0F);
+    display_putstr("Usage: touch <filename>\n", vesa_rgb(0,0,255));
     return;
   }
   fs_create_file(argv[1]);
@@ -90,7 +94,7 @@ void cmd_touch(int argc, char *argv[]) {
 
 void cmd_cat(int argc, char **argv) {
   if (argc < 2) {
-    vga_putstr("Usage: cat <filename>\n", 0x0E);
+    display_putstr("Usage: cat <filename>\n", vesa_rgb(0,0,255));
     return;
   }
 
@@ -98,22 +102,22 @@ void cmd_cat(int argc, char **argv) {
   int read_bytes = fs_read_file(argv[1], (uint8_t *)buffer, sizeof(buffer));
 
   if (read_bytes < 0) {
-    vga_putstr("cat: file not found or read error\n", 0x0C);
+    display_putstr("cat: file not found or read error\n", vesa_rgb(255,0,0));
     return;
   }
 
   // Print file contents
   for (int i = 0; i < read_bytes; i++) {
-    vga_putchar(buffer[i], 0x0F);
+    display_putchar(buffer[i], vesa_rgb(128, 128, 0));
   }
 
-  vga_putchar('\n', 0x0F);
+  display_putchar('\n', vesa_rgb(128,128,0) );
 }
 
 int cmd_bye(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
-  vga_putstr("Shutting down...\n", color_green_on_black());
+  display_putstr("Shutting down...\n", (uint32_t) color_green_on_black());
   while (1) {
     __asm__("hlt");
   }
@@ -122,55 +126,55 @@ int cmd_bye(int argc, char *argv[]) {
 
 void cmd_mkdir(int argc, char *argv[]) {
   if (argc < 2) {
-    vga_putstr("Usage: mkdir <dirname>\n", 0x0F);
+    display_putstr("Usage: mkdir <dirname>\n", vesa_rgb(0,0,255));
     return;
   }
 
   int result = fs_create_directory(argv[1]);
   if (result == -2) {
-    vga_putstr("mkdir: directory already exists\n", 0x0C);
+    display_putstr("mkdir: directory already exists\n", vesa_rgb(255, 255, 0));
   } else if (result < 0) {
-    vga_putstr("mkdir: error creating directory\n", 0x0C);
+    display_putstr("mkdir: error creating directory\n", vesa_rgb(255,0,0));
   } else {
-    vga_putstr("Directory created\n", 0x0A);
+    display_putstr("Directory created\n", vesa_rgb(0,255,0));
   }
 }
 
 void cmd_rmdir(int argc, char *argv[]) {
   if (argc < 2) {
-    vga_putstr("Usage: rmdir <dirname>\n", 0x0F);
+    display_putstr("Usage: rmdir <dirname>\n", vesa_rgb(0,0,255));
     return;
   }
 
   int result = fs_delete_directory(argv[1]);
   if (result == -1) {
-    vga_putstr("rmdir: directory not found\n", 0x0C);
+    display_putstr("rmdir: directory not found\n", vesa_rgb(255,0,0));
   } else if (result == -2) {
-    vga_putstr("rmdir: not a directory\n", 0x0C);
+    display_putstr("rmdir: not a directory\n", vesa_rgb(255,0,0));
   } else if (result < 0) {
-    vga_putstr("rmdir: error deleting directory\n", 0x0C);
+    display_putstr("rmdir: error deleting directory\n", vesa_rgb(255,0,0));
   } else {
-    vga_putstr("Directory deleted\n", 0x0A);
+    display_putstr("Directory deleted\n", vesa_rgb(0,255,0));
   }
 }
 
 void cmd_rm(int argc, char *argv[]) {
   if (argc < 2) {
-    vga_putstr("Usage: rm <filename>\n", 0x0F);
+    display_putstr("Usage: rm <filename>\n", vesa_rgb(0,0,255));
     return;
   }
 
   // Check if it's a directory
   if (fs_is_directory(argv[1]) == 1) {
-    vga_putstr("rm: cannot remove directory, use rmdir\n", 0x0C);
+    display_putstr("rm: cannot remove directory, use rmdir\n", vesa_rgb(255,0,0));
     return;
   }
 
   int result = fs_delete_file(argv[1]);
   if (result < 0) {
-    vga_putstr("rm: file not found\n", 0x0C);
+    display_putstr("rm: file not found\n", vesa_rgb(255,0,0));
   } else {
-    vga_putstr("File deleted\n", 0x0A);
+    display_putstr("File deleted\n", vesa_rgb(0,255,0));
   }
 }
 
@@ -183,14 +187,14 @@ void cmd_cd(int argc, char *argv[]) {
 
   int result = fs_change_directory(argv[1]);
   if (result == -1) {
-    vga_putstr("cd: directory not found\n", 0x0C);
+    display_putstr("cd: directory not found\n", vesa_rgb(255,0,0));
   } else if (result == -2) {
-    vga_putstr("cd: not a directory\n", 0x0C);
+    display_putstr("cd: not a directory\n", vesa_rgb(255,0,0));
   }
   // Success is silent
 }
 
 void cmd_pwd(void) {
-  vga_putstr(fs_get_current_dir(), 0x0F);
-  vga_putchar('\n', 0x0F);
+  display_putstr(fs_get_current_dir(), vesa_rgb(0,0,255));
+  display_putchar('\n', vesa_rgb(0,0,255));
 }

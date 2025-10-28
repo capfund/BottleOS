@@ -17,5 +17,12 @@ typedef struct {
     uint32_t cmdline;
     uint32_t mods_count;
     uint32_t mods_addr;
+
+    uint32_t framebuffer_addr;
+    uint32_t framebuffer_pitch;
+    uint32_t framebuffer_width;
+    uint32_t framebuffer_height;
+    uint8_t framebuffer_bpp;
+    uint8_t framebuffer_type;
     // (we don't need anything else for now)
 } multiboot_info_t;

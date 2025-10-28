@@ -6,6 +6,8 @@
 extern uint8_t *disk_module_addr;
 extern uint32_t disk_module_size;
 
+extern int use_vesa;
+
 void set_disk_module(uint32_t start, uint32_t end);
 
 // Dark mode color codes
@@ -31,5 +33,6 @@ static inline uint8_t color_green_on_black() {
 int k_create_file(const char *name);
 int k_write_file(const char *name, const char *content);
 int k_read_file(const char *name, char *buffer, uint32_t size);
+
 
 #endif

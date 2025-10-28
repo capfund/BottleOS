@@ -8,10 +8,15 @@
 
 static char input_buffer[INPUT_BUFFER_SIZE];
 static unsigned int input_pos = 0;
-
+// ill prolly make like a.... nano type text editor ig; eh guess ill prolly start with VESA framebuffers then
+// good luck lol
+// okay
+// ill make a read-write terminal for you there ya go
 static void shell_parse_input(char *input, char *argv[], int *argc) {
   *argc = 0;
-  char *p = input;
+  char *p = input; 
+  // heyas, ima look at 8 bit bitmaps for fonts, you can do what you need to atm
+  // yeah thats cool, my only concern is whether we will need VESA frame buffers; or we could try using VGA Graphics but i dont think that is very... viable
   while (*p && *argc < MAX_ARGS) {
     while (*p == ' ')
       p++; // skip spaces
