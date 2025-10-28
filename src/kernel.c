@@ -3,11 +3,11 @@
 #include "fs/fs.h"
 #include "multiboot.h"
 #include "shell/shell.h"
-#include "vga/vga.h"
-#include "vesa/vesa.h" 
+#include "display/display.h"  // Use display instead of direct VGA/VESA
+#include "vesa/vesa.h"
 
-int light_mode = 1;
-int use_vesa = 0;  // track which display mode we're using
+int light_mode = 0;
+int use_vesa = 1; // track which display mode we're using
 
 uint8_t *disk_module_addr = 0;
 uint32_t disk_module_size = 0;
@@ -22,22 +22,14 @@ void kprint_num(uint32_t n) {
   int i = 10;
   buf[11] = 0;
   if (n == 0) {
-    if (use_vesa) {
-      vesa_term_putstr("0", vesa_rgb(0, 255, 0));
-    } else {
-      vga_putstr("0", color_green_on_black());
-    }
+    display_putstr("0", vesa_rgb(0, 255, 0));
     return;
   }
   while (n > 0 && i >= 0) {
     buf[i--] = '0' + (n % 10);
     n /= 10;
   }
-  if (use_vesa) {
-    vesa_term_putstr(&buf[i + 1], vesa_rgb(0, 255, 0));
-  } else {
-    vga_putstr(&buf[i + 1], color_green_on_black());
-  }
+  display_putstr(&buf[i + 1], vesa_rgb(0, 255, 0));
 }
 
 int k_create_file(const char *name) { return fs_create_file(name); }
@@ -55,20 +47,29 @@ void kernel_main(uint32_t magic, uint32_t addr) {
   (void)magic;
   multiboot_info_t *mbi = (multiboot_info_t *)addr;
 
+  // Debug: Print multiboot flags
+  display_putstr("Multiboot flags: ", vesa_rgb(255, 255, 255));
+  kprint_num(mbi->flags);
+  display_putstr("\n", vesa_rgb(255, 255, 255));
+
   // Check for VESA framebuffer first
   if (mbi->flags & (1 << 12)) {
+    display_putstr("VESA framebuffer detected!\n", vesa_rgb(0, 255, 0));
     use_vesa = 1;
-    vesa_init(
-        mbi->framebuffer_addr,
-        mbi->framebuffer_width,
-        mbi->framebuffer_height,
-        mbi->framebuffer_pitch,
-        mbi->framebuffer_bpp
-    );
+    vesa_init(mbi->framebuffer_addr, mbi->framebuffer_width,
+              mbi->framebuffer_height, mbi->framebuffer_pitch,
+              mbi->framebuffer_bpp);
     vesa_term_init();
+    display_clear();
+    display_putstr("Welcome to BottleOS Shell [VESA mode, testing branch]\n",
+                   vesa_rgb(0, 255, 0));
   } else {
+    display_putstr("No VESA framebuffer, using VGA\n", vesa_rgb(255, 0, 0));
     use_vesa = 0;
-    vga_clear_screen();
+    // VGA will be initialized by display layer
+    display_clear();
+    display_putstr("Welcome to BottleOS Shell [VGA text mode, testing branch]\n",
+                   vesa_rgb(0, 255, 0));
   }
 
   if (mbi->mods_count > 0) {
@@ -76,31 +77,11 @@ void kernel_main(uint32_t magic, uint32_t addr) {
     disk_module_addr = (uint8_t *)mod->mod_start;
     disk_module_size = mod->mod_end - mod->mod_start;
 
-    if (use_vesa) {
-      vesa_term_putstr("Found disk module, size = ", vesa_rgb(0, 255, 0));
-      kprint_num(disk_module_size);
-      vesa_term_putstr("\n", vesa_rgb(0, 255, 0));
-    } else {
-      vga_putstr("Found disk module, size = ", color_green_on_black());
-      kprint_num(disk_module_size);
-      vga_putstr("\n", color_green_on_black());
-    }
+    display_putstr("Found disk module, size = ", vesa_rgb(0, 255, 0));
+    kprint_num(disk_module_size);
+    display_putstr("\n", vesa_rgb(0, 255, 0));
   } else {
-    if (use_vesa) {
-      vesa_term_putstr("No modules loaded.\n", vesa_rgb(255, 0, 0));
-    } else {
-      vga_putstr("No modules loaded.\n", color_green_on_black());
-    }
-  }
-
-  if (use_vesa) {
-    vesa_term_clear();
-    vesa_term_putstr("Welcome to BottleOS Shell [VESA mode, testing branch]\n",
-                     vesa_rgb(0, 255, 0));
-  } else {
-    vga_clear_screen();
-    vga_putstr("Welcome to BottleOS Shell [VGA text mode, testing branch]\n",
-               color_green_on_black());
+    display_putstr("No modules loaded.\n", vesa_rgb(255, 0, 0));
   }
 
   fs_init();

@@ -20,7 +20,7 @@ KERNEL_OBJ = $(patsubst src/%.c, $(BUILD_DIR)/%.o, $(KERNEL_SRC))
 LINKER_SCRIPT = src/link.ld
 
 
-CFLAGS = -ffreestanding -nostdlib -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -Iinclude
+CFLAGS = -ffreestanding -nostdlib -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -Iinclude #rm Werror
 LINKER_FLAGS =
 ASFLAGS =
 
@@ -75,7 +75,8 @@ $(GRUB_CFG):
 	echo 'set default=0' >> $(GRUB_CFG)
 	echo 'menuentry "BottleOS" {' >> $(GRUB_CFG)
 	echo '    multiboot /boot/kernel.bin' >> $(GRUB_CFG)
-	echo '    boot' >> $(GRUB_CFG)
+	echo '    module /boot/disk.img' >> $(GRUB_CFG)
+	echo '    set gfxpayload=1024x768x32' >> $(GRUB_CFG)
 	echo '}' >> $(GRUB_CFG)
 
 # ==================================

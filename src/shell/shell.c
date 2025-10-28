@@ -4,19 +4,16 @@
 #include "../fs/fs.h"
 #include "../kernel.h"
 #include "../keyboard/keyboard.h"
-#include "../vga/vga.h"
+#include "../display/display.h"
+#include "../vesa/vesa.h"
 
 static char input_buffer[INPUT_BUFFER_SIZE];
 static unsigned int input_pos = 0;
-// ill prolly make like a.... nano type text editor ig; eh guess ill prolly start with VESA framebuffers then
-// good luck lol
-// okay
-// ill make a read-write terminal for you there ya go
+
 static void shell_parse_input(char *input, char *argv[], int *argc) {
   *argc = 0;
-  char *p = input; 
-  // heyas, ima look at 8 bit bitmaps for fonts, you can do what you need to atm
-  // yeah thats cool, my only concern is whether we will need VESA frame buffers; or we could try using VGA Graphics but i dont think that is very... viable
+  char *p = input;
+  
   while (*p && *argc < MAX_ARGS) {
     while (*p == ' ')
       p++; // skip spaces
@@ -54,18 +51,18 @@ static void shell_execute_command(int argc, char *argv[]) {
       cmd_cat(argc, argv);
     } else if (strcmp(argv[0], "write") == 0) {
       cmd_write(argc, argv);
-    } else if (strcmp(argv[0], "mkdir") == 0) { // ADD THIS
+    } else if (strcmp(argv[0], "mkdir") == 0) {
       cmd_mkdir(argc, argv);
-    } else if (strcmp(argv[0], "rmdir") == 0) { // ADD THIS
+    } else if (strcmp(argv[0], "rmdir") == 0) {
       cmd_rmdir(argc, argv);
     } else if (strcmp(argv[0], "rm") == 0) {
       cmd_rm(argc, argv);
-    } else if (strcmp(argv[0], "cd") == 0) { // ADD THIS
+    } else if (strcmp(argv[0], "cd") == 0) {
       cmd_cd(argc, argv);
-    } else if (strcmp(argv[0], "pwd") == 0) { // ADD THIS
+    } else if (strcmp(argv[0], "pwd") == 0) {
       cmd_pwd();
     } else {
-      vga_putstr("Unknown command\n", color_white_on_black());
+      display_putstr("Unknown command\n", vesa_rgb(255, 0, 0));
     }
   }
 }
@@ -73,7 +70,7 @@ static void shell_execute_command(int argc, char *argv[]) {
 static void shell_handle_input(char c) {
   if (c == '\n') {
     input_buffer[input_pos] = '\0';
-    vga_putchar('\n', color_white_on_black());
+    display_putchar('\n', vesa_rgb(255, 255, 255));
 
     char *argv[MAX_ARGS];
     int argc;
@@ -81,36 +78,27 @@ static void shell_handle_input(char c) {
     shell_execute_command(argc, argv);
 
     input_pos = 0;
-    vga_putstr(fs_get_current_dir(), color_green_on_black());
-    vga_putstr(" > ", color_white_on_black());
+    display_putstr(fs_get_current_dir(), vesa_rgb(0, 255, 0));
+    display_putstr(" > ", vesa_rgb(255, 255, 255));
   } else if (c == '\b') {
     if (input_pos > 0) {
       input_pos--;
-      unsigned int row = vga_get_cursor_row();
-      unsigned int col = vga_get_cursor_col();
-      if (col > 0) {
-        vga_set_cursor(row, col - 1);
-      } else if (row > 0) {
-        vga_set_cursor(row - 1, VGA_MEM_WIDTH - 1);
-      }
-      vga_putchar(' ', color_white_on_black());
-      if (col > 0) {
-        vga_set_cursor(row, col - 1);
-      } else if (row > 0) {
-        vga_set_cursor(row - 1, VGA_MEM_WIDTH - 1);
-      }
+      
+      // Simple backspace: print backspace, space, then backspace again
+      display_putchar('\b', vesa_rgb(255, 255, 255)); // Move cursor back
+      display_putchar(' ', vesa_rgb(255, 255, 255));  // Erase character
+      display_putchar('\b', vesa_rgb(255, 255, 255)); // Move cursor back again
     }
   } else {
     if (input_pos < INPUT_BUFFER_SIZE - 1) {
       input_buffer[input_pos++] = c;
-      vga_putchar(c, color_white_on_black());
+      display_putchar(c, vesa_rgb(255, 255, 255));
     }
   }
 }
 
 void shell_start(void) {
-
-  vga_putstr("> ", color_white_on_black());
+  display_putstr("> ", vesa_rgb(255, 255, 255));
 
   while (1) {
     unsigned char scancode = keyboard_get_scancode();
@@ -128,9 +116,7 @@ void shell_start(void) {
       switch (c) {
       case 'c': // Ctrl+C clears input
         input_pos = 0;
-        vga_putstr("> ", color_white_on_black());
-        vga_putchar('\n', color_white_on_black());
-
+        display_putstr("\n> ", vesa_rgb(255, 255, 255));
         continue;
       case 'a': // Ctrl+A moves cursor to start
         input_pos = 0;
