@@ -8,6 +8,13 @@ int cmd_bye(int argc, char *argv[]);
 void cmd_ls(void);
 void cmd_touch(int argc, char *argv[]);
 void cmd_cat(int argc, char *argv[]);
+
+/* FileSystem related commands */
+void cmd_mkdir(int argc, char *argv[]);
+void cmd_rmdir(int argc, char *argv[]);
+void cmd_rm(int argc, char *argv[]);
 void cmd_write(int argc, char **argv);
+void cmd_cd(int argc, char *argv[]);
+void cmd_pwd(void);
 
 #endif

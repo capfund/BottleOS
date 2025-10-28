@@ -17,11 +17,18 @@ size_t strlen(const char *s) {
   return len;
 }
 
+#include "clib.h"
+
 unsigned char inb(unsigned short port) {
-  unsigned char ret;
-  __asm__("inb %1, %0" : "=a"(ret) : "Nd"(port));
-  return ret;
+    unsigned char ret;
+    __asm__ volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
+    return ret;
 }
+
+void outb(unsigned short port, unsigned char val) {
+    __asm__ volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
+}
+
 
 int strncmp(const char *s1, const char *s2, unsigned int n) {
     for (unsigned int i = 0; i < n; i++) {

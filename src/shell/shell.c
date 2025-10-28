@@ -49,6 +49,16 @@ static void shell_execute_command(int argc, char *argv[]) {
       cmd_cat(argc, argv);
     } else if (strcmp(argv[0], "write") == 0) {
       cmd_write(argc, argv);
+    } else if (strcmp(argv[0], "mkdir") == 0) { // ADD THIS
+      cmd_mkdir(argc, argv);
+    } else if (strcmp(argv[0], "rmdir") == 0) { // ADD THIS
+      cmd_rmdir(argc, argv);
+    } else if (strcmp(argv[0], "rm") == 0) {
+      cmd_rm(argc, argv);
+    } else if (strcmp(argv[0], "cd") == 0) { // ADD THIS
+      cmd_cd(argc, argv);
+    } else if (strcmp(argv[0], "pwd") == 0) { // ADD THIS
+      cmd_pwd();
     } else {
       vga_putstr("Unknown command\n", color_white_on_black());
     }
@@ -66,7 +76,8 @@ static void shell_handle_input(char c) {
     shell_execute_command(argc, argv);
 
     input_pos = 0;
-    vga_putstr("> ", color_white_on_black());
+    vga_putstr(fs_get_current_dir(), color_green_on_black());
+    vga_putstr(" > ", color_white_on_black());
   } else if (c == '\b') {
     if (input_pos > 0) {
       input_pos--;

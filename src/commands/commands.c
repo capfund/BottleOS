@@ -119,3 +119,78 @@ int cmd_bye(int argc, char *argv[]) {
   }
   return 0;
 }
+
+void cmd_mkdir(int argc, char *argv[]) {
+  if (argc < 2) {
+    vga_putstr("Usage: mkdir <dirname>\n", 0x0F);
+    return;
+  }
+
+  int result = fs_create_directory(argv[1]);
+  if (result == -2) {
+    vga_putstr("mkdir: directory already exists\n", 0x0C);
+  } else if (result < 0) {
+    vga_putstr("mkdir: error creating directory\n", 0x0C);
+  } else {
+    vga_putstr("Directory created\n", 0x0A);
+  }
+}
+
+void cmd_rmdir(int argc, char *argv[]) {
+  if (argc < 2) {
+    vga_putstr("Usage: rmdir <dirname>\n", 0x0F);
+    return;
+  }
+
+  int result = fs_delete_directory(argv[1]);
+  if (result == -1) {
+    vga_putstr("rmdir: directory not found\n", 0x0C);
+  } else if (result == -2) {
+    vga_putstr("rmdir: not a directory\n", 0x0C);
+  } else if (result < 0) {
+    vga_putstr("rmdir: error deleting directory\n", 0x0C);
+  } else {
+    vga_putstr("Directory deleted\n", 0x0A);
+  }
+}
+
+void cmd_rm(int argc, char *argv[]) {
+  if (argc < 2) {
+    vga_putstr("Usage: rm <filename>\n", 0x0F);
+    return;
+  }
+
+  // Check if it's a directory
+  if (fs_is_directory(argv[1]) == 1) {
+    vga_putstr("rm: cannot remove directory, use rmdir\n", 0x0C);
+    return;
+  }
+
+  int result = fs_delete_file(argv[1]);
+  if (result < 0) {
+    vga_putstr("rm: file not found\n", 0x0C);
+  } else {
+    vga_putstr("File deleted\n", 0x0A);
+  }
+}
+
+void cmd_cd(int argc, char *argv[]) {
+  if (argc < 2) {
+    // No argument - go to root
+    fs_change_directory("/");
+    return;
+  }
+
+  int result = fs_change_directory(argv[1]);
+  if (result == -1) {
+    vga_putstr("cd: directory not found\n", 0x0C);
+  } else if (result == -2) {
+    vga_putstr("cd: not a directory\n", 0x0C);
+  }
+  // Success is silent
+}
+
+void cmd_pwd(void) {
+  vga_putstr(fs_get_current_dir(), 0x0F);
+  vga_putchar('\n', 0x0F);
+}
