@@ -13,5 +13,6 @@ char keyboard_scancode_to_ascii(unsigned char scancode);
 int keyboard_is_shift_pressed(void);
 int keyboard_is_ctrl_pressed(void);
 int keyboard_is_caps_lock_on(void);
+unsigned char keyboard_poll_scancode(void);
 
 #endif

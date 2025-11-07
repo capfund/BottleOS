@@ -24,6 +24,10 @@ static inline uint8_t color_white_on_black() {
   return light_mode ? LIGHT_WHITE_ON_BLACK : DARK_WHITE_ON_BLACK;
 }
 
+static inline uint8_t color_black_on_white() {
+  return light_mode ? LIGHT_WHITE_ON_BLACK : LIGHT_WHITE_ON_BLACK;
+}
+
 static inline uint8_t color_green_on_black() {
   return light_mode ? LIGHT_GREEN_ON_BLACK : DARK_GREEN_ON_BLACK;
 }

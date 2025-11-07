@@ -5,9 +5,19 @@
 #include "../kernel.h"
 #include "../keyboard/keyboard.h"
 #include "../vga/vga.h"
+#include "../deca/deca.h"
 
 static char input_buffer[INPUT_BUFFER_SIZE];
 static unsigned int input_pos = 0;
+
+static void press_any_key_to_continue(void) {
+    vga_putstr("\nPress any key to continue...", color_white_on_black());
+    while (1) {
+        unsigned char scancode = keyboard_get_scancode();
+        if (!(scancode & 0x80)) // key pressed (not released)
+            break;
+    }
+}
 
 static void shell_parse_input(char *input, char *argv[], int *argc) {
   *argc = 0;
@@ -59,6 +69,17 @@ static void shell_execute_command(int argc, char *argv[]) {
       cmd_cd(argc, argv);
     } else if (strcmp(argv[0], "pwd") == 0) { // ADD THIS
       cmd_pwd();
+    } else if (strcmp(argv[0], "deca") == 0) {
+      if (argc > 1) {
+        vga_putstr(argv[1], color_white_on_black());
+        press_any_key_to_continue();
+        deca_start(argv[1]);
+      } else {
+        vga_putstr("error: no filename set, please press any key to continue.", color_white_on_black());
+        press_any_key_to_continue();
+        deca_start(NULL);
+      }
+      //deca_start(argc, argv);
     } else {
       vga_putstr("Unknown command\n", color_white_on_black());
     }

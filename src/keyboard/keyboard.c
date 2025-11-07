@@ -67,6 +67,12 @@ unsigned char keyboard_get_scancode() {
   return inb(KEYBOARD_DATA_PORT);
 }
 
+unsigned char keyboard_poll_scancode(void) {
+    if (inb(KEYBOARD_STATUS_PORT) & 1)
+        return inb(KEYBOARD_DATA_PORT);
+    return 0; // no key available
+}
+
 int keyboard_is_shift_pressed(void) { return shift_pressed; }
 int keyboard_is_ctrl_pressed(void) { return ctrl_pressed; }
 int keyboard_is_caps_lock_on(void) { return caps_lock_on; }
