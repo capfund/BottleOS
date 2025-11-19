@@ -9,7 +9,7 @@
 
 #define FS_MAX_FILES 128
 #define FS_FILENAME_LEN 32
-#define FS_BLOCK_SIZE 512   /* bytes per block */
+#define FS_BLOCK_SIZE 2048 //512   /* bytes per block */
 #define FS_MAX_BLOCKS 16384 /* safety limit */
 
 typedef struct {

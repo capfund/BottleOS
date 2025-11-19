@@ -17,4 +17,7 @@ void cmd_write(int argc, char **argv);
 void cmd_cd(int argc, char *argv[]);
 void cmd_pwd(void);
 
+// experimental commands
+void cmd_vga(void);
+
 #endif

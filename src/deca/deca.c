@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include "../commands/commands.h"
 
-#define DECA_MAX_LINES 50 // formerly 1024
+#define DECA_MAX_LINES 80 // formerly 1024
 #define DECA_LINE_LEN  80
 
 static void press_any_key_to_continue(void) {

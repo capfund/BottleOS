@@ -2,6 +2,7 @@
 #include "../clib/clib.h"
 #include "../fs/fs.h"
 #include "../kernel.h"
+#include "../graphics/graphics.h"
 #include "../vga/vga.h"
 
 void cmd_hello() { vga_putstr("Hello, user!\n", color_green_on_black()); }
@@ -79,6 +80,10 @@ void cmd_theme(int argc, char *argv[]) {
 }
 
 void cmd_ls() { fs_list_files(); }
+
+void cmd_vga() {
+  vga_test();
+}
 
 void cmd_touch(int argc, char *argv[]) {
   if (argc < 2) {
