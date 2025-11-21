@@ -28,7 +28,6 @@ void outb(unsigned short port, unsigned char val) {
     __asm__ volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
 }
 
-
 int strncmp(const char *s1, const char *s2, unsigned int n) {
     for (unsigned int i = 0; i < n; i++) {
         if (s1[i] != s2[i] || s1[i] == '\0' || s2[i] == '\0') {

@@ -4,6 +4,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// inlines
+static inline void outw(uint16_t port, uint16_t val) {
+    __asm__ __volatile__("outw %0, %1" : : "a"(val), "Nd"(port));
+}
+
+// remainder of defs
+
 void outb(unsigned short port, unsigned char val);
 int strcmp(const char *s1, const char *s2);
 size_t strlen(const char *s);

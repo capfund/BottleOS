@@ -119,6 +119,9 @@ int cmd_bye(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
   vga_putstr("Shutting down...\n", color_green_on_black());
+  // attempt shutdown
+  outw(0x604, 0x2000);
+  // falback on hlt and returns 0
   while (1) {
     __asm__("hlt");
   }
