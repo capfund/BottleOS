@@ -15,10 +15,13 @@ ENTRY_OBJ = $(BUILD_DIR)/entry.o
 
 # Find all C source files recursively
 KERNEL_SRC = $(shell find src -name "*.c")
-KERNEL_OBJ = $(patsubst src/%.c, $(BUILD_DIR)/%.o, $(KERNEL_SRC))
+KERNEL_OBJ = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(KERNEL_SRC))
+
+# Find all ASM source files recursively
+ASM_SRC = $(shell find src -name "*.asm")
+ASM_OBJ = $(patsubst src/%.asm,$(BUILD_DIR)/%.o,$(ASM_SRC))
 
 LINKER_SCRIPT = src/link.ld
-
 
 CFLAGS = -ffreestanding -nostdlib -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -Iinclude
 LINKER_FLAGS =
@@ -46,16 +49,22 @@ endif
 
 all: dirs $(BUILD_DIR)/kernel.bin
 
-$(BUILD_DIR)/kernel.bin: $(ENTRY_OBJ) $(KERNEL_OBJ)
+$(BUILD_DIR)/kernel.bin: $(ENTRY_OBJ) $(KERNEL_OBJ) $(ASM_OBJ)
 	$(LD) $(LINKER_FLAGS) -T $(LINKER_SCRIPT) -o $@ $^
 
 $(ENTRY_OBJ): $(ENTRY_POINT)
+	@mkdir -p $(dir $@)
 	$(AS) $(ASFLAGS) -o $@ $<
 
-# Pattern rule for C files - create build directory structure first
+# Pattern rule for C files
 $(BUILD_DIR)/%.o: src/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c -o $@ $< -MMD -MF $(@:.o=.d)
+
+# Pattern rule for ASM files
+$(BUILD_DIR)/%.o: src/%.asm
+	@mkdir -p $(dir $@)
+	$(AS) $(ASFLAGS) -o $@ $<
 
 # ==================================
 # ISO generation section
@@ -71,22 +80,22 @@ $(GRUB_CFG):
 	@mkdir -p $(ISO_DIR)/boot/grub
 	cp $(BUILD_DIR)/kernel.bin $(ISO_DIR)/boot/
 	cp src/disk.img $(ISO_DIR)/boot/
-	echo 'set timeout=0' > $(GRUB_CFG)
-	echo 'set default=0' >> $(GRUB_CFG)
-	echo 'menuentry "BottleOS" {' >> $(GRUB_CFG)
-	echo '    multiboot /boot/kernel.bin' >> $(GRUB_CFG)
-	echo '    boot' >> $(GRUB_CFG)
-	echo '}' >> $(GRUB_CFG)
+	@echo 'set timeout=0' > $(GRUB_CFG)
+	@echo 'set default=0' >> $(GRUB_CFG)
+	@echo 'menuentry "BottleOS" {' >> $(GRUB_CFG)
+	@echo '    multiboot /boot/kernel.bin' >> $(GRUB_CFG)
+	@echo '    boot' >> $(GRUB_CFG)
+	@echo '}' >> $(GRUB_CFG)
 
 # ==================================
 # Run targets
 # ==================================
 
 run: $(BUILD_DIR)/kernel.bin
-	qemu-system-x86_64 -kernel $<
+	qemu-system-x86_64 -kernel $< -m 512M -vga std -no-reboot
 
 run-iso: iso
-	qemu-system-x86_64 -cdrom $(ISO_IMAGE)
+	qemu-system-x86_64 -cdrom $(ISO_IMAGE) -m 512M -vga std -no-reboot
 
 # ==================================
 # Utility targets
