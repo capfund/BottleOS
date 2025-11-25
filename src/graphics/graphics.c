@@ -4,6 +4,12 @@
 // Active driver
 static graphics_driver_t *graphics_active_driver = 0;
 
+/* externs */
+extern void idt_init(void);
+extern void serial_mouse_install(void);
+extern int mouse_get_x(void);
+extern int mouse_get_y(void);
+
 void graphics_set_driver(graphics_driver_t *driver) {
     graphics_active_driver = driver;
     if (graphics_active_driver && graphics_active_driver->init) {
@@ -46,10 +52,24 @@ void graphics_draw_happy_face(int x, int y, graphics_color_t color) {
 
 void vga_test() {
 	graphics_set_driver(&graphics_vga_driver);
-	graphics_clear_screen();
-	graphics_draw_rectangle(150, 10, 100, 50, 3);
-	// draw some faces
-	graphics_draw_happy_face(10,10,2);
-	graphics_draw_happy_face(100,100,5);
-	graphics_draw_happy_face(300,150,5);
+    // init idt
+    idt_init();            
+    serial_mouse_install();
+    asm volatile("sti"); 
+
+    // graphic functionalitys
+    while (1) {
+        graphics_clear_screen();
+
+        int x = mouse_get_x();
+        int y = mouse_get_y();
+
+        graphics_draw_rectangle(150, 10, 100, 50, 3);
+        // draw some faces
+        graphics_draw_happy_face(10,10,2);
+        graphics_draw_happy_face(100,100,5);
+        graphics_draw_happy_face(300,150,5);
+
+        graphics_draw_rectangle(x, y, 10, 10, 2);
+    }
 }
