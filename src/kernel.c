@@ -10,9 +10,6 @@ int light_mode = 1;
 uint8_t *disk_module_addr = 0;
 uint32_t disk_module_size = 0;
 
-extern void idt_init(void);
-extern void serial_mouse_install(void);
-
 
 void set_disk_module(uint32_t start, uint32_t end) {
   disk_module_addr = (uint8_t *)start;
