@@ -10,6 +10,7 @@ int light_mode = 1;
 uint8_t *disk_module_addr = 0;
 uint32_t disk_module_size = 0;
 
+
 void set_disk_module(uint32_t start, uint32_t end) {
   disk_module_addr = (uint8_t *)start;
   disk_module_size = end - start;
@@ -61,4 +62,5 @@ void kernel_main(uint32_t magic, uint32_t addr) {
              color_green_on_black());
   fs_init();
   shell_start();
+  
 }
