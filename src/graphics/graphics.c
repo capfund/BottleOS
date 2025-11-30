@@ -4,6 +4,7 @@
 
 // Active driver
 static graphics_driver_t *graphics_active_driver = 0;
+extern void vga_flush();    
 
 void graphics_set_driver(graphics_driver_t *driver) {
     graphics_active_driver = driver;
@@ -99,5 +100,6 @@ void vga_test() {
         // Draw cursor and scroll bar once per frame
         graphics_draw_cursor(mouse_x, mouse_y, 2);
         graphics_draw_rectangle(300, 10, 20, scroll_bar_height, 5);
+        vga_flush();
     }
 }
