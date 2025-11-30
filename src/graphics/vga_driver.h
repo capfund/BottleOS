@@ -24,5 +24,6 @@
 #define	VGA_NUM_SEQ_REGS	5
 
 extern graphics_driver_t graphics_vga_driver;
+void graphics_flush();
 
 #endif
