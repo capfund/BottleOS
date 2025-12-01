@@ -2,10 +2,18 @@
 #include "vga_driver.h"
 #include "../mouse/ps2.h"
 #include "../fs/fs.h"
+#include "fonts.h"
+#include "../clib/clib.h"
 
 // Active driver
 static graphics_driver_t *graphics_active_driver = 0;
 extern void vga_flush();    
+
+#define MAX_CLICKS 64
+
+typedef struct { int x, y; } Click;
+Click clicks[MAX_CLICKS];
+int num_clicks = 0;
 
 void graphics_set_driver(graphics_driver_t *driver) {
     graphics_active_driver = driver;
@@ -35,11 +43,8 @@ void graphics_draw_rectangle(int x, int y, int width, int height, graphics_color
 }
 
 void graphics_draw_happy_face(int x, int y, graphics_color_t color) {
-    // eyes
     graphics_plot_pixel(x, y, color);
     graphics_plot_pixel(x + 10, y, color);
-
-    // mouth
     for (int i = 0; i <= 8; i++) graphics_plot_pixel(x + i, y + 10, color);
     graphics_plot_pixel(x, y + 8, color);
     graphics_plot_pixel(x + 1, y + 9, color);
@@ -54,6 +59,60 @@ void graphics_draw_cursor(int x, int y, graphics_color_t color) {
     }
 }
 
+static uint8_t reverse_bits(uint8_t b) {
+    b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+    b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+    b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+    return b;
+}
+
+void graphics_draw_char(int x, int y, char c, graphics_color_t color) {
+    unsigned char uc = (unsigned char)c;
+    if (uc < 32 || uc > 127) return;
+
+    const uint8_t *bitmap = font8x8_basic[uc - 32];
+    for (int row = 0; row < 8; row++) {
+        uint8_t bits = reverse_bits(bitmap[row]);
+        for (int col = 0; col < 8; col++) {
+            if (bits & (1 << (7 - col))) {
+                graphics_plot_pixel(x + col, y + row, color);
+            }
+        }
+    }
+}
+
+/* for future me: the color may use the rgb func below */
+void graphics_draw_string(int x, int y, const char *str, graphics_color_t color) {
+    int orig_x = x;
+    while (*str) {
+        if (*str == '\n') {
+            y += 8;
+            x = orig_x;
+        } else {
+            graphics_draw_char(x, y, *str, color);
+            x += 8;
+        }
+        str++;
+    }
+}
+
+/* For future me (params):
+r8, g8, b8: rgb values
+palette index: the palate to replace e.g replace 15 for white*/
+uint8_t rgb(uint8_t r8, uint8_t g8, uint8_t b8, uint8_t palette_index) {
+    // convert 0->255 to 0->63 (6bit channel)
+    uint8_t r6 = r8 >> 2;
+    uint8_t g6 = g8 >> 2;
+    uint8_t b6 = b8 >> 2;
+
+    outb(0x03C8, palette_index);
+    outb(0x03C9, r6);            // r
+    outb(0x03C9, g6);            // g
+    outb(0x03C9, b6);            // b
+
+    return palette_index; // return plotting index
+}
+
 void vga_test() {
     graphics_set_driver(&graphics_vga_driver);
 
@@ -64,22 +123,21 @@ void vga_test() {
         while (1);
     }
 
-    // Initial positions
     int mouse_x = 160;
     int mouse_y = 100;
-    int scroll_bar_height = 20;
 
     while (1) {
-        // Clear the screen once per frame
+        // Clear screen
         graphics_clear_screen();
 
-        // Draw static graphics
+        // Draw static shapes
         graphics_draw_rectangle(150, 10, 100, 50, 3);
-        graphics_draw_happy_face(10,10,2);
-        graphics_draw_happy_face(100,100,5);
-        graphics_draw_happy_face(200,150,5);
+        graphics_draw_happy_face(10, 10, 2);
+        graphics_draw_happy_face(100, 100, 5);
+        graphics_draw_happy_face(200, 150, 5);
+        graphics_draw_string(140, 90, "drawn in vga text mode", rgb(255,255,255,15));
 
-        // Poll all available mouse packets for this frame
+        // Poll all mouse packets
         while (mouse_poll(&pkt) == 1) {
             mouse_x += pkt.dx;
             mouse_y -= pkt.dy;
@@ -90,22 +148,28 @@ void vga_test() {
             if (mouse_y < 0) mouse_y = 0;
             if (mouse_y > 199) mouse_y = 199;
 
-            // Scroll wheel visual
-            if (pkt.dz != 0) {
-                scroll_bar_height += pkt.dz * 2;
-                if (scroll_bar_height < 5) scroll_bar_height = 5;
-                if (scroll_bar_height > 50) scroll_bar_height = 50;
+            // Left-click: record click position
+            if (pkt.left != 0 && num_clicks < MAX_CLICKS) {
+                clicks[num_clicks].x = mouse_x;
+                clicks[num_clicks].y = mouse_y;
+                num_clicks++;
+            } else if (pkt.left != 0 && num_clicks >= MAX_CLICKS) {
+                num_clicks = 0;
+                clicks[num_clicks].x = mouse_x;
+                clicks[num_clicks].y = mouse_y;
+                num_clicks++;
             }
-            
-            /* Left click demo (TBD)
-            if (pkt.left != 0) {
-                graphics_draw_rectangle(mouse_x, mouse_y, 10, 10, 19);
-            } */
         }
 
-        // Draw cursor and scroll bar once per frame
+        // Draw all recorded clicks
+        for (int i = 0; i < num_clicks; i++) {
+            graphics_draw_rectangle(clicks[i].x, clicks[i].y, 10, 10, 19);
+        }
+
+        // Draw cursor on top
         graphics_draw_cursor(mouse_x, mouse_y, 2);
-        graphics_draw_rectangle(300, 10, 20, scroll_bar_height, 5);
+
+        // Flush buffer to VGA
         vga_flush();
     }
 }
