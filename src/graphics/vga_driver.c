@@ -1,6 +1,5 @@
 #include "vga_driver.h"
 #include "../kernel.h"  // for ioport_in/out
-#include "../screen/screen.h"
 #include <string.h>      // for memcpy
 
 #define VGA_ADDRESS 0xA0000

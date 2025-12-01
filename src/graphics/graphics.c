@@ -1,6 +1,7 @@
 #include "graphics.h"
 #include "vga_driver.h"
 #include "../mouse/ps2.h"
+#include "../fs/fs.h"
 
 // Active driver
 static graphics_driver_t *graphics_active_driver = 0;
@@ -95,6 +96,11 @@ void vga_test() {
                 if (scroll_bar_height < 5) scroll_bar_height = 5;
                 if (scroll_bar_height > 50) scroll_bar_height = 50;
             }
+            
+            /* Left click demo (TBD)
+            if (pkt.left != 0) {
+                graphics_draw_rectangle(mouse_x, mouse_y, 10, 10, 19);
+            } */
         }
 
         // Draw cursor and scroll bar once per frame

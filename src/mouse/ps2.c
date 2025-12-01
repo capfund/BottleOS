@@ -7,7 +7,7 @@ extern void outb(uint16_t port, uint8_t val);
 typedef struct {
     int8_t dx;
     int8_t dy;
-    int8_t dz;       // scroll wheel
+    int8_t dz;       // scroll wheel (always 0 in this 3-byte-only driver)
     uint8_t left;
     uint8_t right;
     uint8_t middle;
@@ -44,11 +44,16 @@ static int ps2_wait_output_full(void) {
     return (t <= 0) ? -1 : 0;
 }
 
+/* Bounded flush: empties up to MAX_FLUSH bytes from controller to avoid infinite loops */
 static void ps2_flush_input(void) {
-    while (inb(PS2_STATUS_PORT) & PS2_STATUS_OBF)
+    const int MAX_FLUSH = 64;
+    int n = 0;
+    while ((inb(PS2_STATUS_PORT) & PS2_STATUS_OBF) && n++ < MAX_FLUSH) {
         (void)inb(PS2_DATA_PORT);
+    }
 }
 
+/* Write a byte to the mouse (via 0xD4). */
 static int mouse_write_byte(uint8_t val) {
     if (ps2_wait_input_clear() < 0) return -1;
     outb(PS2_CMD_PORT, 0xD4);
@@ -57,6 +62,7 @@ static int mouse_write_byte(uint8_t val) {
     return 0;
 }
 
+/* Read a byte from mouse with timeout */
 static int mouse_read_timeout(void) {
     if (ps2_wait_output_full() < 0) return -1;
     return inb(PS2_DATA_PORT);
@@ -74,65 +80,86 @@ static int mouse_send_command_with_ack(uint8_t cmd) {
     return -1;
 }
 
-/* Mouse initialization */
+/* Mouse initialization - keep simple and tolerant */
 int mouse_init(void) {
     ps2_flush_input();
 
+    /* Reset mouse and wait for ACK + BAT (0xAA) */
     if (mouse_send_command_with_ack(0xFF) != PS2_ACK) return -1;
 
-    int byte = mouse_read_timeout();
-    if (byte < 0) return -2;
-    if (byte != 0xAA) {
-        int next = mouse_read_timeout();
-        if (next != 0xAA) return -3;
+    /* After reset, the mouse sends BAT (0xAA) and then device ID (0x00) usually.
+       Read until we find 0xAA or timeout (be tolerant of ordering differences). */
+    int found = 0;
+    for (int i = 0; i < 8; ++i) {
+        int b = mouse_read_timeout();
+        if (b < 0) break;
+        if (b == 0xAA) { found = 1; break; }
     }
+    if (!found) return -2;
 
+    /* Flush any leftover bytes before continuing */
     ps2_flush_input();
 
+    /* Set defaults and enable streaming (standard 3-byte behavior) */
     if (mouse_send_command_with_ack(0xF6) != PS2_ACK) return -4;
     if (mouse_send_command_with_ack(0xF4) != PS2_ACK) return -5;
 
+    /* Final flush */
     ps2_flush_input();
     return 0;
 }
 
-/* Polling and packet parser with 3- or 4-byte packets */
+/* =========================
+   mouse_poll - STRICT 3-BYTE
+   =========================
+   - Forces 3-byte packets only (no 4th wheel byte).
+   - Resynchronizes robustly if first byte invalid.
+   - Discards packets where X/Y overflow bits are set (bits 6/7).
+*/
 int mouse_poll(MousePacket *out) {
-    static unsigned char buf[4];
+    static uint8_t buf[3];
     static int index = 0;
-    static int packet_size = 3; // default 3, auto-detect if 4-byte
 
     while (inb(PS2_STATUS_PORT) & PS2_STATUS_OBF) {
-        unsigned char b = inb(PS2_DATA_PORT);
+        uint8_t b = inb(PS2_DATA_PORT);
 
-        /* First byte must have bit 3 set */
-        if (index == 0 && !(b & 0x08)) {
-            index = 0;
+        /* If we're at packet start, first byte must have bit 3 set (0x08).
+           If not, we consider it noise and continue (resync). */
+        if (index == 0) {
+            if (!(b & 0x08)) {
+                index = 0;
+                continue;
+            }
+            buf[0] = b;
+            index = 1;
             continue;
         }
 
+        /* store subsequent bytes */
         buf[index++] = b;
 
-        if (index == 3 && (buf[0] & 0x08)) {
-            /* Check if mouse has scroll wheel (4-byte packet) */
-            if (buf[0] & 0x08) packet_size = 4; // most modern mice default 4-byte
-        }
-
-        if (index >= packet_size) {
+        if (index >= 3) {
+            /* We have 3 bytes -> validate and produce packet */
             index = 0;
 
+            /* If overflow bits (X or Y overflow) are set in first byte, discard packet */
+            /* bits 6 (X overflow) and 7 (Y overflow) */
+            if (buf[0] & 0xC0) {
+                /* drop this packet and continue reading new ones */
+                continue;
+            }
+
+            /* decode */
             int8_t dx = (int8_t)buf[1];
             int8_t dy = (int8_t)buf[2];
-            int8_t dz = 0;
-
-            if (packet_size == 4) dz = (int8_t)buf[3];
 
             out->dx = dx;
             out->dy = dy;
-            out->dz = dz;
+            out->dz = 0; /* wheel disabled in strict 3-byte mode */
+
             out->left   = buf[0] & 0x01;
-            out->right  = (buf[0] & 0x02) >> 1;
-            out->middle = (buf[0] & 0x04) >> 2;
+            out->right  = (buf[0] >> 1) & 1;
+            out->middle = (buf[0] >> 2) & 1;
 
             return 1;
         }
