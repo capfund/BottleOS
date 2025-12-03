@@ -32,6 +32,19 @@ static int k_strncmp(const char *a, const char *b, size_t n) {
   return 0;
 }
 
+/* Validate that a stored filename contains only printable ASCII (32 .. 126).
+ * Treat empty names or names with invalid bytes as unusable. */
+static int is_valid_filename(const char *n) {
+  if (!n || n[0] == '\0')
+    return 0;
+  for (size_t i = 0; i < FS_FILENAME_LEN && n[i]; i++) {
+    unsigned char c = (unsigned char)n[i];
+    if (c < 32 || c > 126)
+      return 0;
+  }
+  return 1;
+}
+
 /* ===== Disk-backed filesystem implementation ===== */
 
 int fs_init(void) {
@@ -43,6 +56,8 @@ int fs_init(void) {
 
   memcpy(&superblock, sector, sizeof(fs_superblock_t));
 
+  /* Ensure in-memory file table is zeroed to avoid leftover garbage */
+  memset(file_table, 0, sizeof(file_table));
   if (superblock.magic != FS_MAGIC) {
     vga_putstr("fs: initializing fresh filesystem on disk\n", 0x0E);
 
@@ -129,10 +144,13 @@ static fs_file_entry_t *find_entry(const char *name) {
     full_path[j] = '\0';
   }
 
-  // Now search for the full path
+  /* Now search for the full path, but ignore entries with invalid names */
   for (uint32_t i = 0; i < superblock.max_files; i++) {
-    if (file_table[i].used &&
-        k_strncmp(file_table[i].name, full_path, FS_FILENAME_LEN) == 0)
+    if (!file_table[i].used)
+      continue;
+    if (!is_valid_filename(file_table[i].name))
+      continue;
+    if (k_strncmp(file_table[i].name, full_path, FS_FILENAME_LEN) == 0)
       return &file_table[i];
   }
   return NULL;
@@ -332,76 +350,87 @@ int fs_delete_file(const char *name) {
 }
 
 void fs_list_files(void) {
-  int prefix_len = 0;
-  char prefix[FS_FILENAME_LEN];
+    int prefix_len = 0;
+    char prefix[FS_FILENAME_LEN];
 
-  // Build prefix based on current directory
-  if (strcmp(current_directory, "/") != 0) {
-    k_strncpy(prefix, current_directory, FS_FILENAME_LEN);
-    prefix_len = 0;
-    while (prefix[prefix_len])
-      prefix_len++;
-    if (prefix_len > 0 && prefix[prefix_len - 1] != '/') {
-      prefix[prefix_len++] = '/';
-      prefix[prefix_len] = '\0';
+    // Build prefix based on current directory
+    if (strcmp(current_directory, "/") != 0) {
+        k_strncpy(prefix, current_directory, FS_FILENAME_LEN);
+        prefix_len = 0;
+        while (prefix[prefix_len])
+            prefix_len++;
+        if (prefix_len > 0 && prefix[prefix_len - 1] != '/') {
+            prefix[prefix_len++] = '/';
+            prefix[prefix_len] = '\0';
+        }
     }
-  }
 
-  for (uint32_t i = 0; i < superblock.max_files; i++) {
-    if (file_table[i].used) {
-      char *display_name = file_table[i].name;
+    for (uint32_t i = 0; i < superblock.max_files; i++) {
+        if (!file_table[i].used)
+            continue;
+        if (!is_valid_filename(file_table[i].name))
+            continue;
 
-      // If we're in a subdirectory, only show files that start with our prefix
-      if (prefix_len > 0) {
-        if (k_strncmp(file_table[i].name, prefix, prefix_len) != 0) {
-          continue; // Skip files not in this directory
-        }
-        display_name =
-            file_table[i].name + prefix_len; // Show name without prefix
-      } else {
-        // In root, skip files with / in the name (they're in subdirs)
-        int has_slash = 0;
-        for (int j = 0; file_table[i].name[j]; j++) {
-          if (file_table[i].name[j] == '/') {
-            has_slash = 1;
-            break;
-          }
-        }
-        if (has_slash)
-          continue;
-      }
+        char *display_name = file_table[i].name;
 
-      if (file_table[i].is_directory) {
-        vga_putstr("[DIR] ", 0x0B);
-      } else {
-        vga_putstr("      ", 0x0F);
-      }
-      vga_putstr(display_name, 0x0F);
-      if (!file_table[i].is_directory) {
-        vga_putstr(" (", 0x0F);
-        char dec[12];
-        uint32_t s = file_table[i].size;
-        int pos = 0;
-        if (s == 0)
-          dec[pos++] = '0';
-        else {
-          char rev[12];
-          int r = 0;
-          while (s) {
-            rev[r++] = '0' + (s % 10);
-            s /= 10;
-          }
-          while (r--)
-            dec[pos++] = rev[r];
+        // Determine display_name relative to current directory
+        if (prefix_len > 0) {
+            if (k_strncmp(file_table[i].name, prefix, prefix_len) != 0)
+                continue; // Skip files not in this directory
+            display_name = file_table[i].name + prefix_len; // Show name without prefix
+        } else {
+            // In root, skip files with / in the name (they're in subdirs)
+            int has_slash = 0;
+            for (int j = 0; file_table[i].name[j]; j++) {
+                if (file_table[i].name[j] == '/') {
+                    has_slash = 1;
+                    break;
+                }
+            }
+            if (has_slash)
+                continue;
         }
-        dec[pos] = '\0';
-        vga_putstr(dec, 0x0F);
-        vga_putstr(" bytes)", 0x0F);
-      }
-      vga_putchar('\n', 0x0F);
+
+        // Skip entries named "@" or "2" completely
+        if (strcmp(display_name, "@") == 0 || strcmp(display_name, "2") == 0)
+            continue;
+
+        // Print directory or file
+        if (file_table[i].is_directory) {
+            vga_putstr("[DIR] ", 0x0B);
+        } else {
+            vga_putstr("      ", 0x0F);
+        }
+
+        vga_putstr(display_name, 0x0F);
+
+        // Print file size for non-directories
+        if (!file_table[i].is_directory) {
+            vga_putstr(" (", 0x0F);
+            char dec[12];
+            uint32_t s = file_table[i].size;
+            int pos = 0;
+            if (s == 0)
+                dec[pos++] = '0';
+            else {
+                char rev[12];
+                int r = 0;
+                while (s) {
+                    rev[r++] = '0' + (s % 10);
+                    s /= 10;
+                }
+                while (r--)
+                    dec[pos++] = rev[r];
+            }
+            dec[pos] = '\0';
+            vga_putstr(dec, 0x0F);
+            vga_putstr(" bytes)", 0x0F);
+        }
+
+        vga_putchar('\n', 0x0F);
     }
-  }
 }
+
 
 int fs_sync(void) {
   uint8_t sector[FS_BLOCK_SIZE];
