@@ -80,12 +80,15 @@ $(GRUB_CFG):
 	@mkdir -p $(ISO_DIR)/boot/grub
 	cp $(BUILD_DIR)/kernel.bin $(ISO_DIR)/boot/
 	cp src/disk.img $(ISO_DIR)/boot/
-	@echo 'set timeout=0' > $(GRUB_CFG)
-	@echo 'set default=0' >> $(GRUB_CFG)
+	@echo 'set gfxmode=1024x768x32' >> $(GRUB_CFG)
+	@echo 'set gfxpayload=keep' >> $(GRUB_CFG)
+	@echo 'terminal_output gfxterm' >> $(GRUB_CFG)
+
 	@echo 'menuentry "BottleOS" {' >> $(GRUB_CFG)
 	@echo '    multiboot /boot/kernel.bin' >> $(GRUB_CFG)
 	@echo '    boot' >> $(GRUB_CFG)
 	@echo '}' >> $(GRUB_CFG)
+
 
 # ==================================
 # Run targets
