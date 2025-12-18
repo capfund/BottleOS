@@ -82,10 +82,9 @@ $(GRUB_CFG):
 	cp src/disk.img $(ISO_DIR)/boot/
 	@echo 'set gfxmode=1024x768x32' >> $(GRUB_CFG)
 	@echo 'set gfxpayload=keep' >> $(GRUB_CFG)
-	@echo 'terminal_output gfxterm' >> $(GRUB_CFG)
 
 	@echo 'menuentry "BottleOS" {' >> $(GRUB_CFG)
-	@echo '    multiboot /boot/kernel.bin' >> $(GRUB_CFG)
+	@echo '    multiboot2 /boot/kernel.bin' >> $(GRUB_CFG)
 	@echo '    boot' >> $(GRUB_CFG)
 	@echo '}' >> $(GRUB_CFG)
 

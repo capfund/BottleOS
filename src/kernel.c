@@ -1,67 +1,43 @@
-#include "kernel.h"
-#include "clib/clib.h"
-#include "fs/fs.h"
-#include "multiboot.h"
-#include "shell/shell.h"
-#include "vga/vga.h"
+#include <stdint.h>
+#include "multiboot2.h"
 
-/* Last modified to refactor code 
-- removed disk module functionality (replaced with ata pio)
-- removed redundant helpers
-- added test funct
+// compatibility reasons
+int light_mode = 0;
 
-TODO: Extend fb functionality :)*/
-
-int light_mode = 0; // global var, i hate light mode :<    
-
-void kprint_num(uint32_t n) {
-    char buf[12];
-    int i = 10;
-    buf[11] = 0;
-
-    if (n == 0) {
-        vga_putstr("0", color_green_on_black());
-        return;
-    }
-
-    while (n > 0 && i >= 0) {
-        buf[i--] = '0' + (n % 10);
-        n /= 10;
-    }
-
-    vga_putstr(&buf[i + 1], color_green_on_black());
+static inline void outb(uint16_t port, uint8_t val) {
+    __asm__ volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
 }
 
-// Kernel entry point
 void kernel_main(uint32_t magic, uint32_t addr) {
-    (void)magic;
-    multiboot_info_t *mbi = (multiboot_info_t *)addr;
-
-    // Clear screen and print welcome message
-    vga_clear_screen();
-    vga_putstr("Welcome to BottleOS Shell [light, testing branch]\n", 
-               color_green_on_black());
-
-    // Simple test: print memory info if available
-    if (mbi->flags & 0x1) { // bit 0 = mem info present
-        vga_putstr("Lower memory: ", color_green_on_black());
-        kprint_num(mbi->mem_lower);
-        vga_putstr(" KB\n", color_green_on_black());
-
-        vga_putstr("Upper memory: ", color_green_on_black());
-        kprint_num(mbi->mem_upper);
-        vga_putstr(" KB\n", color_green_on_black());
-    } else {
-        vga_putstr("No memory info provided.\n", color_green_on_black());
+    if (magic != MB2_MAGIC) {
+        for (;;);
     }
 
-    if (mbi->flags & (1 << 12)) {
-        vga_putstr("Framebuffer available\n", color_green_on_black());
-    } else {
-        vga_putstr("No framebuffer passed!!\n", color_green_on_black());
+    //mb2_info_t *mb2 = (mb2_info_t *)addr;
+    mb2_tag_t *tag = (mb2_tag_t *)(addr + 8);
+
+    mb2_tag_framebuffer_t *fb = 0;
+
+    while (tag->type != 0) {
+        if (tag->type == MB2_TAG_FRAMEBUFFER) {
+            fb = (mb2_tag_framebuffer_t *)tag;
+            break;
+        }
+        tag = (mb2_tag_t *)((uint8_t *)tag + ((tag->size + 7) & ~7));
     }
 
-    // Initialize filesystem and start shell
-    fs_init();
-    shell_start();
+    if (!fb || fb->framebuffer_type != 1) {
+        for (;;); // No framebuffer → halt
+    }
+
+    uint32_t *framebuffer = (uint32_t *)(uint32_t)fb->addr;
+    uint32_t pitch = fb->pitch / 4;
+
+    uint32_t x = 10;
+    uint32_t y = 10;
+
+    framebuffer[y * pitch + x] = 0x00FF0000; // RED pixel (XRGB)
+
+    for (;;)
+        __asm__ volatile ("hlt");
 }
