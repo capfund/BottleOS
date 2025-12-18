@@ -3,6 +3,8 @@
 #include "graphics/graphics.h"
 #include "graphics/vesa_driver.h"
 #include "mouse/ps2.h"
+#include "keyboard/keyboard.h"
+#include <stdbool.h>
 
 // compatibility reasons
 int light_mode = 0;
@@ -14,6 +16,13 @@ int num_clicks = 0;
 
 static inline void outb(uint16_t port, uint8_t val) {
     __asm__ volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
+}
+
+bool clicked(const Button *btn, int mouse_x, int mouse_y) {
+    return mouse_x >= btn->x &&
+           mouse_x < (btn->x + btn->width) &&
+           mouse_y >= btn->y &&
+           mouse_y < (btn->y + btn->height);
 }
 
 void kernel_main(uint32_t magic, uint32_t addr) {
@@ -54,12 +63,21 @@ void kernel_main(uint32_t magic, uint32_t addr) {
         for (;;); // halt (placeholder)
     }
 
+    Button myButton = {
+        .x = 100, .y = 50,
+        .width = 120, .height = 40,
+        .label = "Click Me!",
+        .bg_color = RGB(50, 50, 200),
+        .text_color = RGB(255, 255, 255)
+    };
+
     int mouse_x = 300;
     int mouse_y = 200;
 
     while (1) {
         graphics_clear_screen(RGB(0,12,255));
-        graphics_draw_string(20, 20, "ever tried chicken?", RGB(255,255,255));
+        graphics_draw_string(20, 20, "ever tried chicken?", RGB(255,255,255), 2);
+        draw_button(&myButton);
 
         while (mouse_poll(&pkt) == 1) {
             mouse_x += pkt.dx;
@@ -81,6 +99,12 @@ void kernel_main(uint32_t magic, uint32_t addr) {
                 clicks[num_clicks].x = mouse_x;
                 clicks[num_clicks].y = mouse_y;
                 num_clicks++;
+            }
+
+            if (pkt.left != 0) {
+                if (clicked(&myButton, mouse_x, mouse_y)) {
+                    myButton.bg_color = RGB(200, 50, 50); // change color on click
+                }
             }
         }
 
