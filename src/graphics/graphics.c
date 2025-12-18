@@ -12,15 +12,21 @@ void graphics_set_driver(graphics_driver_t *driver) {
     }
 }
 
-void graphics_clear_screen(void) {
+void graphics_clear_screen(graphics_color_t color) {
     if (graphics_active_driver && graphics_active_driver->clear_screen) {
-        graphics_active_driver->clear_screen(RGB(0,0,0));
+        graphics_active_driver->clear_screen(color);
     }
 }
 
 void graphics_plot_pixel(int x, int y, graphics_color_t color) {
     if (graphics_active_driver && graphics_active_driver->plot_pixel) {
         graphics_active_driver->plot_pixel(x, y, color);
+    }
+}
+
+void graphics_present(void) {
+    if (graphics_active_driver && graphics_active_driver->present) {
+        graphics_active_driver->present();
     }
 }
 
@@ -46,17 +52,9 @@ void graphics_draw_cursor(int x, int y, graphics_color_t color) {
     }
 }
 
-/*static uint8_t reverse_bits(uint8_t b) {
-    b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
-    b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
-    b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
-    return b;
-}*/
-
 void graphics_draw_char(int x, int y, char c, graphics_color_t color) {
     uint8_t uc = (uint8_t)c;
 
-    // clamping ascii
     if (uc < 32 || uc > 127) return;
 
     const uint8_t *bitmap = font8x8_basic[uc];
@@ -70,7 +68,6 @@ void graphics_draw_char(int x, int y, char c, graphics_color_t color) {
         }
     }
 }
-
 
 void graphics_draw_string(int x, int y, const char *str, graphics_color_t color) {
     int orig_x = x;

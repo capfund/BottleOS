@@ -84,7 +84,7 @@ void *memset(void *dest, int value, size_t n) {
 }
 
 // allocs clib
-#define HEAP_SIZE (1024 * 256) // 64 KB heap (adjust as needed)
+#define HEAP_SIZE (16 * 1024 * 1024) // 16MB heap
 
 static uint8_t heap[HEAP_SIZE];
 static size_t heap_index = 0;
