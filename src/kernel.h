@@ -3,11 +3,6 @@
 
 #include <stdint.h>
 
-extern uint8_t *disk_module_addr;
-extern uint32_t disk_module_size;
-
-void set_disk_module(uint32_t start, uint32_t end);
-
 // Dark mode color codes
 #define DARK_WHITE_ON_BLACK 0x0F
 #define DARK_GREEN_ON_BLACK 0x02
@@ -19,7 +14,7 @@ void set_disk_module(uint32_t start, uint32_t end);
 // Global theme flag
 extern int light_mode;
 
-// Functions to get current colors
+// Functions to get current colors 
 static inline uint8_t color_white_on_black() {
   return light_mode ? LIGHT_WHITE_ON_BLACK : DARK_WHITE_ON_BLACK;
 }
@@ -32,8 +27,6 @@ static inline uint8_t color_green_on_black() {
   return light_mode ? LIGHT_GREEN_ON_BLACK : DARK_GREEN_ON_BLACK;
 }
 
-int k_create_file(const char *name);
-int k_write_file(const char *name, const char *content);
-int k_read_file(const char *name, char *buffer, uint32_t size);
+void kernel_main(uint32_t magic, uint32_t addr);
 
 #endif
