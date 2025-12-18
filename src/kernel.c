@@ -55,6 +55,12 @@ void kernel_main(uint32_t magic, uint32_t addr) {
         vga_putstr("No memory info provided.\n", color_green_on_black());
     }
 
+    if (mbi->flags & (1 << 12)) {
+        vga_putstr("Framebuffer available\n", color_green_on_black());
+    } else {
+        vga_putstr("No framebuffer passed!!\n", color_green_on_black());
+    }
+
     // Initialize filesystem and start shell
     fs_init();
     shell_start();
