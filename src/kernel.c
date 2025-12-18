@@ -1,5 +1,7 @@
 #include <stdint.h>
 #include "multiboot2.h"
+#include "graphics/graphics.h"
+#include "graphics/vesa_driver.h"
 
 // compatibility reasons
 int light_mode = 0;
@@ -30,14 +32,18 @@ void kernel_main(uint32_t magic, uint32_t addr) {
         for (;;); // No framebuffer → halt
     }
 
-    uint32_t *framebuffer = (uint32_t *)(uint32_t)fb->addr;
-    uint32_t pitch = fb->pitch / 4;
+    vesa_init_from_multiboot(
+        fb->addr,
+        fb->width,
+        fb->height,
+        fb->pitch,
+        fb->bpp
+    );
 
-    uint32_t x = 10;
-    uint32_t y = 10;
+    graphics_set_driver(&graphics_vesa_driver);
 
-    framebuffer[y * pitch + x] = 0x00FF0000; // RED pixel (XRGB)
-
-    for (;;)
-        __asm__ volatile ("hlt");
+    // Test
+    graphics_clear_screen();
+    graphics_draw_rectangle(50, 50, 200, 100, RGB(255,0,0));
+    graphics_draw_string(60, 90, "hello CRUEL WORLD!!!", RGB(255,255,255));
 }

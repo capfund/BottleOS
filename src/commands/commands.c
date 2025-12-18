@@ -81,10 +81,6 @@ void cmd_theme(int argc, char *argv[]) {
 
 void cmd_ls() { fs_list_files(); }
 
-void cmd_vga() {
-  vga_test();
-}
-
 void cmd_touch(int argc, char *argv[]) {
   if (argc < 2) {
     vga_putstr("Usage: touch <filename>\n", 0x0F);

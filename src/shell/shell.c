@@ -80,9 +80,9 @@ static void shell_execute_command(int argc, char *argv[]) {
         deca_start(NULL);
       }
       //deca_start(argc, argv);
-    } else if (strcmp(argv[0], "vga") == 0) {
+    } /*else if (strcmp(argv[0], "vga") == 0) {
       cmd_vga();
-    } else {
+    }*/ else {
       vga_putstr("Unknown command\n", color_white_on_black());
     }
   }
