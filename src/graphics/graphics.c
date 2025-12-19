@@ -92,7 +92,11 @@ void graphics_draw_string(int x, int y, const char *str, graphics_color_t color,
 
 void draw_button(const Button *btn) {
     // Draw background
-    graphics_draw_rectangle(btn->x, btn->y, btn->width, btn->height, btn->bg_color);
+    if (btn->border_rad > 0) {
+        graphics_draw_rounded_rect(btn->x, btn->y, btn->width, btn->height, btn->border_rad, btn->bg_color);
+    } else {
+        graphics_draw_rectangle(btn->x, btn->y, btn->width, btn->height, btn->bg_color);
+    }
 
     // Draw label centered
     int label_len = 0;
@@ -108,4 +112,87 @@ void draw_button(const Button *btn) {
     int text_y = btn->y + (btn->height - text_height) / 2;
 
     graphics_draw_string(text_x, text_y, btn->label, btn->text_color, scale);
+}
+
+void graphics_draw_filled_circle(int cx, int cy, int radius, graphics_color_t color) {
+    for (int y = -radius; y <= radius; y++) {
+        for (int x = -radius; x <= radius; x++) {
+            if (x*x + y*y <= radius*radius) {
+                graphics_plot_pixel(cx + x, cy + y, color);
+            }
+        }
+    }
+}
+
+void graphics_draw_rounded_rect(
+    int x,
+    int y,
+    int width,
+    int height,
+    int radius,
+    graphics_color_t color
+) {
+    // Clamp radius
+    if (radius < 0) radius = 0;
+    if (radius * 2 > width)  radius = width / 2;
+    if (radius * 2 > height) radius = height / 2;
+
+    // Center rectangle
+    graphics_draw_rectangle(
+        x + radius,
+        y,
+        width - 2 * radius,
+        height,
+        color
+    );
+
+    // Left rectangle
+    graphics_draw_rectangle(
+        x,
+        y + radius,
+        radius,
+        height - 2 * radius,
+        color
+    );
+
+    // Right rectangle
+    graphics_draw_rectangle(
+        x + width - radius,
+        y + radius,
+        radius,
+        height - 2 * radius,
+        color
+    );
+
+    // Top-left corner
+    graphics_draw_filled_circle(
+        x + radius,
+        y + radius,
+        radius,
+        color
+    );
+
+    // Top-right corner
+    graphics_draw_filled_circle(
+        x + width - radius - 1,
+        y + radius,
+        radius,
+        color
+    );
+
+    // Bottom-left corner
+    graphics_draw_filled_circle(
+        x + radius,
+        y + height - radius - 1,
+        radius,
+        color
+    );
+
+    // Bottom-right corner
+    graphics_draw_filled_circle(
+        x + width - radius - 1,
+        y + height - radius - 1,
+        radius,
+        color
+    );
 }

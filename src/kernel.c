@@ -4,6 +4,7 @@
 #include "graphics/vesa_driver.h"
 #include "mouse/ps2.h"
 #include "keyboard/keyboard.h"
+#include "clib/clib.h"
 #include <stdbool.h>
 
 // compatibility reasons
@@ -13,10 +14,6 @@ int light_mode = 0;
 typedef struct { int x, y; } Click;
 Click clicks[MAX_CLICKS];
 int num_clicks = 0;
-
-static inline void outb(uint16_t port, uint8_t val) {
-    __asm__ volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
-}
 
 bool clicked(const Button *btn, int mouse_x, int mouse_y) {
     return mouse_x >= btn->x &&
@@ -68,7 +65,8 @@ void kernel_main(uint32_t magic, uint32_t addr) {
         .width = 120, .height = 40,
         .label = "Click Me!",
         .bg_color = RGB(50, 50, 200),
-        .text_color = RGB(255, 255, 255)
+        .text_color = RGB(255, 255, 255),
+        .border_rad = 40
     };
 
     int mouse_x = 300;
@@ -78,6 +76,7 @@ void kernel_main(uint32_t magic, uint32_t addr) {
         graphics_clear_screen(RGB(0,12,255));
         graphics_draw_string(20, 20, "ever tried chicken?", RGB(255,255,255), 2);
         draw_button(&myButton);
+        graphics_draw_rounded_rect(250, 150, 200, 100, 20, RGB(0,255,0));
 
         while (mouse_poll(&pkt) == 1) {
             mouse_x += pkt.dx;

@@ -21,6 +21,7 @@ typedef struct {
     graphics_color_t bg_color;
     graphics_color_t text_color;
     int text_scale; // docs: 1=normal size, 2=double size, etc.
+    int border_rad; // border radius
 } Button;
 
 // Driver control
@@ -37,6 +38,14 @@ void graphics_draw_cursor(int x, int y, graphics_color_t color);
 void graphics_draw_char(int x, int y, char c, graphics_color_t color, int scale);
 void graphics_draw_string(int x, int y, const char *str, graphics_color_t color, int scale);
 void draw_button(const Button *btn);
+void graphics_draw_rounded_rect(
+    int x,
+    int y,
+    int width,
+    int height,
+    int radius,
+    graphics_color_t color
+);
 
 // RGB helper
 #define RGB(r,g,b) \
