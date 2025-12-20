@@ -196,3 +196,9 @@ void graphics_draw_rounded_rect(
         color
     );
 }
+
+void graphics_set_target(graphics_buffer_t *buffer) {
+    if (graphics_active_driver && graphics_active_driver->set_target) {
+        graphics_active_driver->set_target(buffer);
+    }
+}

@@ -6,26 +6,35 @@
 // 32-bit XRGB color
 typedef uint32_t graphics_color_t;
 
+typedef struct {
+    uint32_t *pixels;
+    uint32_t width;
+    uint32_t height;
+    uint32_t pitch;
+} graphics_buffer_t;
+
 // Abstract graphics interface
 typedef struct graphics_driver {
     void (*init)(void);
+    void (*set_target)(graphics_buffer_t *buffer);
     void (*clear_screen)(graphics_color_t color);
     void (*plot_pixel)(int x, int y, graphics_color_t color);
-    void (*present)(void);     // double-buffer flip
+    void (*present)(void);
 } graphics_driver_t;
 
 typedef struct {
-    int x, y;           // top-left corner
-    int width, height;  // size
-    const char *label;  // text
+    int x, y;
+    int width, height;
+    const char *label;
     graphics_color_t bg_color;
     graphics_color_t text_color;
-    int text_scale; // docs: 1=normal size, 2=double size, etc.
-    int border_rad; // border radius
+    int text_scale;
+    int border_rad;
 } Button;
 
 // Driver control
 void graphics_set_driver(graphics_driver_t *driver);
+void graphics_set_target(graphics_buffer_t *buffer);
 
 // High-level drawing
 void graphics_clear_screen(graphics_color_t color);
