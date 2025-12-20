@@ -1,7 +1,6 @@
 #include "dwm.h"
 #include "window.h"
 #include "blit.h"
-#include "shell_app.h"
 #include "../graphics/graphics.h"
 #include "../mouse/ps2.h"
 
@@ -13,11 +12,16 @@ extern graphics_buffer_t screen_buffer;
 static Window windows[MAX_WINDOWS];
 static int win_count = 0;
 
-// Desktop icon for launching shell
-static const int icon_x = 24;
-static const int icon_y = 24;
-static const int icon_w = 64;
-static const int icon_h = 48;
+// Desktop app registry (modular apps show as icons on the desktop)
+#define MAX_APPS 16
+typedef struct {
+    const char *title;
+    int x, y, w, h;
+    void (*draw)(void);
+    int used;
+} DesktopApp;
+
+static DesktopApp apps[MAX_APPS];
 
 // Drag state
 static int drag_win = -1;
@@ -41,11 +45,27 @@ static void create_window_at(int x, int y, int w, int h, const char *title, void
     win_count++;
 }
 
+void dwm_register_desktop_app(const char *title, int icon_x, int icon_y, int icon_w, int icon_h, void (*draw)(void)) {
+    for (int i = 0; i < MAX_APPS; ++i) {
+        if (!apps[i].used) {
+            apps[i].used = 1;
+            apps[i].title = title;
+            apps[i].x = icon_x;
+            apps[i].y = icon_y;
+            apps[i].w = icon_w;
+            apps[i].h = icon_h;
+            apps[i].draw = draw;
+            return;
+        }
+    }
+}
+
 void dwm_init(void) {
     // initialize mouse (ignore failures for now)
     mouse_init();
     win_count = 0;
-    // do not auto-launch shell — user will click the SHELL icon
+    // let compiled-in modules register their apps
+    modules_init();
 }
 
 void dwm_frame(void) {
@@ -99,12 +119,17 @@ void dwm_frame(void) {
                 }
             }
 
-            // If no window titlebar hit, check icon click
+            // If no window titlebar hit, check registered app icons
             if (!handled) {
-                if (mouse_x >= icon_x && mouse_x < (icon_x + icon_w) &&
-                    mouse_y >= icon_y && mouse_y < (icon_y + icon_h)) {
-                    // Launch shell window overlapping the icon
-                    create_window_at(icon_x, icon_y, 320, 200, "Shell", shell_app_draw);
+                for (int a = 0; a < MAX_APPS; ++a) {
+                    if (!apps[a].used) continue;
+                    if (mouse_x >= apps[a].x && mouse_x < (apps[a].x + apps[a].w) &&
+                        mouse_y >= apps[a].y && mouse_y < (apps[a].y + apps[a].h)) {
+                        // Launch app window overlapping the icon
+                        create_window_at(apps[a].x, apps[a].y, 320, 200, apps[a].title, apps[a].draw);
+                        handled = 1;
+                        break;
+                    }
                 }
             }
         }
@@ -131,11 +156,14 @@ void dwm_frame(void) {
 
     // Now draw desktop (background + icons) onto screen
     graphics_set_target(&screen_buffer);
-    graphics_clear_screen(RGB(0,0,0));
+    graphics_clear_screen(RGB(22,172,199));
 
-    // Draw a simple SHELL icon on the desktop (this is wallpaper-level)
-    graphics_draw_rectangle(icon_x, icon_y, icon_w, icon_h, RGB(60,60,140));
-    graphics_draw_string(icon_x + 6, icon_y + icon_h + 4, "SHELL", RGB(255,255,255), 1);
+    // Draw registered app icons on the desktop
+    for (int a = 0; a < MAX_APPS; ++a) {
+        if (!apps[a].used) continue;
+        graphics_draw_rectangle(apps[a].x, apps[a].y, apps[a].w, apps[a].h, RGB(60,60,140));
+        graphics_draw_string(apps[a].x + 6, apps[a].y + apps[a].h + 4, apps[a].title, RGB(255,255,255), 1);
+    }
 
     // Blit windows in order (0 = bottom, last = top)
     for (int i = 0; i < win_count; ++i) {
