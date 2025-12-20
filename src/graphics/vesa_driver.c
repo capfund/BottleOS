@@ -7,7 +7,7 @@ static uint32_t fb_width  = 0;
 static uint32_t fb_height = 0;
 static uint32_t fb_pitch  = 0;
 
-static graphics_buffer_t screen_buffer;
+graphics_buffer_t screen_buffer;
 static graphics_buffer_t *current_target = 0;
 
 static void vesa_set_target(graphics_buffer_t *buffer) {

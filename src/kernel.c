@@ -6,6 +6,7 @@
 #include "keyboard/keyboard.h"
 #include "clib/clib.h"
 #include <stdbool.h>
+#include "dwm/dwm.h"
 
 // compatibility reasons
 int light_mode = 0;
@@ -55,7 +56,7 @@ void kernel_main(uint32_t magic, uint32_t addr) {
     // tests and inits
     graphics_set_driver(&graphics_vesa_driver);
 
-    MousePacket pkt;
+    /*MousePacket pkt;
     if (mouse_init() != 0) {
         for (;;); // halt (placeholder)
     }
@@ -110,6 +111,11 @@ void kernel_main(uint32_t magic, uint32_t addr) {
         graphics_draw_cursor(mouse_x, mouse_y, RGB(255,255,255));
 
         graphics_present();
-    }
+    }*/
 
+    dwm_init();
+
+    for (;;) {
+        dwm_frame();
+    }
 }
