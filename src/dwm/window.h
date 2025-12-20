@@ -13,5 +13,6 @@ typedef struct {
 } Window;
 
 void window_init(Window *w, int x, int y, int width, int height, const char *title, void (*draw)(void));
+void window_destroy(Window *w);
 
 #endif

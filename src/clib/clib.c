@@ -135,3 +135,17 @@ char *strcat(char *dest, const char *src) {
     *d = '\0';
     return dest;
 }
+
+int atoi(const char *s) {
+    if (!s) return 0;
+    int sign = 1;
+    while (*s == ' ' || *s == '\t') s++;
+    if (*s == '+') { s++; }
+    else if (*s == '-') { sign = -1; s++; }
+    int val = 0;
+    while (*s >= '0' && *s <= '9') {
+        val = val * 10 + (*s - '0');
+        s++;
+    }
+    return val * sign;
+}

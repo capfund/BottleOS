@@ -25,5 +25,6 @@ void free(void *ptr);
 void malloc_reset(void);
 char *strcpy(char *dest, const char *src);
 char *strcat(char *dest, const char *src);
+int atoi(const char *s);
 
 #endif
