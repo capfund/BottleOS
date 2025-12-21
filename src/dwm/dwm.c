@@ -5,6 +5,9 @@
 #include "../mouse/ps2.h"
 #include "event.h"
 #include "../keyboard/keyboard.h"
+#include <stddef.h>
+#include <stdint.h>
+#include "../clib/clib.h"
 
 extern graphics_buffer_t screen_buffer;
 
@@ -21,6 +24,8 @@ typedef struct {
     int x, y, w, h;
     void (*draw)(void);
     int used;
+    int win_w;
+    int win_h;
 } DesktopApp;
 
 static DesktopApp apps[MAX_APPS];
@@ -81,6 +86,8 @@ void dwm_register_desktop_app(const char *title, int icon_x, int icon_y, int ico
             int h = icon_h <= 0 ? ICON_DEFAULT_H : icon_h;
             apps[i].w = w;
             apps[i].h = h;
+            apps[i].win_w = 320;
+            apps[i].win_h = 200;
             if (icon_x < 0 || icon_y < 0 || icon_w <= 0 || icon_h <= 0) {
                 // compute grid placement
                 int sw = (int)screen_buffer.width;
@@ -101,6 +108,40 @@ void dwm_register_desktop_app(const char *title, int icon_x, int icon_y, int ico
     }
 }
 
+// Allow modules to set a preferred initial window size for their app
+void dwm_set_app_window_size(const char *title, int win_w, int win_h) {
+    for (int i = 0; i < MAX_APPS; ++i) {
+        if (!apps[i].used) continue;
+        if (!apps[i].title) continue;
+        // simple string compare
+        int j = 0;
+        const char *a = apps[i].title;
+        const char *b = title;
+        while (a[j] && b[j] && a[j] == b[j]) j++;
+        if (a[j] == '\0' && b[j] == '\0') {
+            apps[i].win_w = win_w > 0 ? win_w : apps[i].win_w;
+            apps[i].win_h = win_h > 0 ? win_h : apps[i].win_h;
+            return;
+        }
+    }
+}
+
+int dwm_get_registered_app_count(void) {
+    int c = 0;
+    for (int i = 0; i < MAX_APPS; ++i) if (apps[i].used) c++;
+    return c;
+}
+
+const char *dwm_get_registered_app_title(int idx) {
+    int c = 0;
+    for (int i = 0; i < MAX_APPS; ++i) {
+        if (!apps[i].used) continue;
+        if (c == idx) return apps[i].title;
+        c++;
+    }
+    return NULL;
+}
+
 void dwm_init(void) {
     // initialize mouse (ignore failures for now)
     mouse_init();
@@ -113,6 +154,7 @@ void dwm_init(void) {
 void dwm_frame(void) {
     MousePacket pkt;
     InputEvent ev;
+    #include <stdint.h>
 
     // Poll drivers to generate events (non-blocking)
     // poll mouse hardware (ps2 mouse) to push any pending packets
@@ -198,8 +240,8 @@ void dwm_frame(void) {
                     if (!apps[a].used) continue;
                     if (mouse_x >= apps[a].x && mouse_x < (apps[a].x + apps[a].w) &&
                         mouse_y >= apps[a].y && mouse_y < (apps[a].y + apps[a].h)) {
-                        // Launch app window overlapping the icon
-                        create_window_at(apps[a].x, apps[a].y, 320, 200, apps[a].title, apps[a].draw);
+                        // Launch app window overlapping the icon — use app's preferred window size
+                        create_window_at(apps[a].x, apps[a].y, apps[a].win_w, apps[a].win_h, apps[a].title, apps[a].draw);
                         handled = 1;
                         break;
                     }
@@ -226,7 +268,18 @@ void dwm_frame(void) {
         graphics_set_target(&windows[i].buffer);
         // Mark which window is currently being rendered so apps can check focus
         current_window = i;
+        // measure CPU time spent in the app draw callback
+        unsigned int lo1, hi1, lo2, hi2;
+        unsigned long long t0, t1;
+        __asm__ volatile ("rdtsc" : "=a" (lo1), "=d" (hi1));
         windows[i].draw();
+        __asm__ volatile ("rdtsc" : "=a" (lo2), "=d" (hi2));
+        t0 = ((unsigned long long)hi1 << 32) | lo1;
+        t1 = ((unsigned long long)hi2 << 32) | lo2;
+        if (t1 > t0) {
+            unsigned long long delta = t1 - t0;
+            clib_account_cpu(windows[i].owner, delta);
+        }
         current_window = -1;
     }
 
@@ -283,4 +336,6 @@ void dwm_frame(void) {
     graphics_draw_cursor(mouse_x, mouse_y, RGB(255,255,255));
 
     graphics_present();
+    // decay per-owner CPU counters slightly each frame to weight recent activity
+    clib_cpu_frame_decay();
 }

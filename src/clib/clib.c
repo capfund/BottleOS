@@ -96,6 +96,115 @@ typedef struct block_header {
 
 static block_header *free_list = NULL;
 
+// simple owner accounting
+#define MAX_OWNERS 32
+typedef struct { const char *name; size_t bytes; unsigned long long cpu_ticks; } owner_entry;
+static owner_entry owners[MAX_OWNERS];
+
+static owner_entry *find_owner(const char *name) {
+    if (!name) return NULL;
+    for (int i = 0; i < MAX_OWNERS; ++i) {
+        if (owners[i].name && strcmp(owners[i].name, name) == 0) return &owners[i];
+    }
+    return NULL;
+}
+
+void clib_account_alloc(const char *owner, size_t bytes) {
+    if (!owner || bytes == 0) return;
+    owner_entry *e = find_owner(owner);
+    if (!e) {
+        // find free slot
+        for (int i = 0; i < MAX_OWNERS; ++i) {
+            if (!owners[i].name) {
+                owners[i].name = owner;
+                owners[i].bytes = 0;
+                e = &owners[i];
+                break;
+            }
+        }
+    }
+    if (e) e->bytes += bytes;
+}
+
+void clib_account_free(const char *owner, size_t bytes) {
+    if (!owner || bytes == 0) return;
+    owner_entry *e = find_owner(owner);
+    if (e) {
+        if (e->bytes > bytes) e->bytes -= bytes;
+        else e->bytes = 0;
+    }
+}
+
+void clib_account_cpu(const char *owner, unsigned long long ticks) {
+    if (!owner || ticks == 0) return;
+    owner_entry *e = find_owner(owner);
+    if (!e) {
+        for (int i = 0; i < MAX_OWNERS; ++i) {
+            if (!owners[i].name) {
+                owners[i].name = owner;
+                owners[i].bytes = 0;
+                owners[i].cpu_ticks = 0;
+                e = &owners[i];
+                break;
+            }
+        }
+    }
+    if (e) e->cpu_ticks += ticks;
+}
+
+unsigned long long clib_owner_cpu_ticks(int idx) {
+    int c = 0;
+    for (int i = 0; i < MAX_OWNERS; ++i) {
+        if (!owners[i].name) continue;
+        if (c == idx) return owners[i].cpu_ticks;
+        c++;
+    }
+    return 0ULL;
+}
+
+unsigned long long clib_total_cpu_ticks(void) {
+    unsigned long long total = 0ULL;
+    for (int i = 0; i < MAX_OWNERS; ++i) {
+        if (!owners[i].name) continue;
+        total += owners[i].cpu_ticks;
+    }
+    return total;
+}
+
+void clib_cpu_frame_decay(void) {
+    // decay all owner cpu counters (simple right shift by 1)
+    for (int i = 0; i < MAX_OWNERS; ++i) {
+        if (!owners[i].name) continue;
+        owners[i].cpu_ticks >>= 1;
+    }
+}
+
+int clib_owner_count(void) {
+    int c = 0;
+    for (int i = 0; i < MAX_OWNERS; ++i) if (owners[i].name) c++;
+    return c;
+}
+
+const char *clib_owner_name(int idx) {
+    int c = 0;
+    for (int i = 0; i < MAX_OWNERS; ++i) {
+        if (!owners[i].name) continue;
+        if (c == idx) return owners[i].name;
+        c++;
+    }
+    return NULL;
+}
+
+size_t clib_owner_bytes(int idx) {
+    int c = 0;
+    for (int i = 0; i < MAX_OWNERS; ++i) {
+        if (!owners[i].name) continue;
+        if (c == idx) return owners[i].bytes;
+        c++;
+    }
+    return 0;
+}
+
 // forward declare panic from vesa driver (display on framebuffer)
 extern void vesa_kernel_panic(const char *msg);
 
@@ -165,6 +274,74 @@ void malloc_reset(void) {
     free_list = NULL;
 }
 
+void clib_heap_stats(size_t *total, size_t *used, size_t *free_out) {
+    if (total) *total = HEAP_SIZE;
+    if (!free_list) {
+        if (used) *used = 0;
+        if (free_out) *free_out = HEAP_SIZE;
+        return;
+    }
+
+    // compute used by scanning blocks
+    size_t used_bytes = 0;
+    block_header *cur = free_list;
+    // The heap begins at `heap` and contains linked blocks that may be free or used.
+    while (cur) {
+        used_bytes += (cur->free ? 0 : cur->size) + sizeof(block_header);
+        cur = cur->next;
+    }
+
+    if (used) *used = used_bytes;
+    if (free_out) *free_out = HEAP_SIZE - used_bytes;
+}
+
+void clib_heap_inspect(
+    size_t *total,
+    size_t *used,
+    size_t *free_out,
+    size_t *num_blocks,
+    size_t *num_free_blocks,
+    size_t *largest_free,
+    size_t *largest_used
+) {
+    if (total) *total = HEAP_SIZE;
+    if (!free_list) {
+        if (used) *used = 0;
+        if (free_out) *free_out = HEAP_SIZE;
+        if (num_blocks) *num_blocks = 0;
+        if (num_free_blocks) *num_free_blocks = 1;
+        if (largest_free) *largest_free = HEAP_SIZE - sizeof(block_header);
+        if (largest_used) *largest_used = 0;
+        return;
+    }
+
+    size_t used_bytes = 0;
+    size_t blocks = 0;
+    size_t free_blocks = 0;
+    size_t max_free = 0;
+    size_t max_used = 0;
+
+    block_header *cur = free_list;
+    while (cur) {
+        blocks++;
+        if (cur->free) {
+            free_blocks++;
+            if (cur->size > max_free) max_free = cur->size;
+        } else {
+            if (cur->size > max_used) max_used = cur->size;
+            used_bytes += cur->size + sizeof(block_header);
+        }
+        cur = cur->next;
+    }
+
+    if (used) *used = used_bytes;
+    if (free_out) *free_out = HEAP_SIZE - used_bytes;
+    if (num_blocks) *num_blocks = blocks;
+    if (num_free_blocks) *num_free_blocks = free_blocks;
+    if (largest_free) *largest_free = max_free;
+    if (largest_used) *largest_used = max_used;
+}
+
 //
 //
 // other stdlibs
@@ -199,4 +376,20 @@ int atoi(const char *s) {
         s++;
     }
     return val * sign;
+}
+
+// Provide libgcc-style 64-bit unsigned division helper to avoid linker
+// dependency on compiler-rt/libgcc. Simple long division algorithm.
+unsigned long long __udivdi3(unsigned long long n, unsigned long long d) {
+    if (d == 0) return (unsigned long long)-1;
+    unsigned long long q = 0;
+    unsigned long long r = 0;
+    for (int i = 63; i >= 0; --i) {
+        r = (r << 1) | ((n >> i) & 1ULL);
+        if (r >= d) {
+            r -= d;
+            q |= (1ULL << i);
+        }
+    }
+    return q;
 }

@@ -8,6 +8,7 @@ typedef struct {
     int width, height;
     graphics_buffer_t buffer;
     const char *title;
+    const char *owner; // logical owner/process name
     int alive;
     void (*draw)(void);
     unsigned int id; // stable identifier for the window instance

@@ -29,6 +29,8 @@ static void vesa_init(void) {
     }
 
     screen_buffer.pixels = bb;
+    // account this allocation as VESA/graphics
+    clib_account_alloc("VESA", bytes);
     screen_buffer.width  = fb_width;
     screen_buffer.height = fb_height;
     screen_buffer.pitch  = fb_pitch;

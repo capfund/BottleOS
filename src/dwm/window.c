@@ -7,6 +7,7 @@ void window_init(Window *w, int x, int y, int width, int height, const char *tit
     w->width = width;
     w->height = height;
     w->title = title;
+    w->owner = title;
     w->alive = 1;
     w->draw = draw;
     w->title = title;
@@ -16,12 +17,18 @@ void window_init(Window *w, int x, int y, int width, int height, const char *tit
     w->buffer.width  = width;
     w->buffer.height = height;
     w->buffer.pitch  = width * 4;
-    w->buffer.pixels = malloc(width * height * 4);
+    size_t bytes = width * height * 4;
+    w->buffer.pixels = malloc(bytes);
+    if (w->buffer.pixels) {
+        clib_account_alloc(w->owner, bytes);
+    }
 }
 
 void window_destroy(Window *w) {
     if (!w) return;
     if (w->buffer.pixels) {
+        size_t bytes = w->buffer.width * w->buffer.height * 4;
+        clib_account_free(w->owner, bytes);
         free(w->buffer.pixels);
         w->buffer.pixels = NULL;
     }

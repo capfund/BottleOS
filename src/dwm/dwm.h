@@ -16,4 +16,11 @@ int dwm_is_current_window_focused(void);
 // Return the stable id of the window currently being rendered, or -1 if none.
 int dwm_get_current_window_id(void);
 
+// Introspection helpers used by monitoring apps
+int  dwm_get_registered_app_count(void);
+const char *dwm_get_registered_app_title(int idx);
+
+// Set preferred initial window size for a registered desktop app
+void dwm_set_app_window_size(const char *title, int win_w, int win_h);
+
 #endif

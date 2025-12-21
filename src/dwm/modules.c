@@ -13,6 +13,11 @@ void modules_init(void) {
 
     // Register a Shutdown app which triggers power_off when its window is created/drawn
     dwm_register_desktop_app("Shutdown", -1, -1, 0, 0, shutdown_app_draw);
+    // Register Task Monitor app
+    extern void task_app_draw(void);
+    dwm_register_desktop_app("Tasks", -1, -1, 0, 0, task_app_draw);
+    // Request a larger window for the task monitor
+    dwm_set_app_window_size("Tasks", 560, 260);
 }
 
 // A tiny draw callback that triggers power_off once when rendered.
