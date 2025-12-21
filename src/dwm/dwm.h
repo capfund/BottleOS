@@ -11,4 +11,9 @@ void dwm_register_desktop_app(const char *title, int icon_x, int icon_y, int ico
 // Called by the DWM to let compiled-in modules register themselves.
 void modules_init(void);
 
+// Focus helpers for apps to check whether the currently-rendered window is focused.
+int dwm_is_current_window_focused(void);
+// Return the stable id of the window currently being rendered, or -1 if none.
+int dwm_get_current_window_id(void);
+
 #endif

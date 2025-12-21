@@ -10,6 +10,7 @@ typedef struct {
     const char *title;
     int alive;
     void (*draw)(void);
+    unsigned int id; // stable identifier for the window instance
 } Window;
 
 void window_init(Window *w, int x, int y, int width, int height, const char *title, void (*draw)(void));

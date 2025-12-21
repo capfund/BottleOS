@@ -32,6 +32,28 @@ static int mouse_x = 300;
 static int mouse_y = 200;
 static int prev_left = 0;
 
+// Focus state: index of focused window, and index being currently rendered
+static int focused_window = -1;
+static int current_window = -1;
+
+// Default icon sizing/spacing when modules don't provide sizes/positions
+#define ICON_DEFAULT_W 64
+#define ICON_DEFAULT_H 48
+#define ICON_SPACING_X 16
+#define ICON_SPACING_Y 24
+#define ICON_START_X 16
+#define ICON_START_Y 24
+
+int dwm_is_current_window_focused(void) {
+    return (current_window != -1 && current_window == focused_window) ? 1 : 0;
+}
+
+int dwm_get_current_window_id(void) {
+    if (current_window == -1) return -1;
+    if (current_window < 0 || current_window >= win_count) return -1;
+    return (int)windows[current_window].id;
+}
+
 static void bring_to_top(int idx) {
     if (idx < 0 || idx >= win_count) return;
     Window tmp = windows[idx];
@@ -43,6 +65,8 @@ static void create_window_at(int x, int y, int w, int h, const char *title, void
     if (win_count >= MAX_WINDOWS) return;
     window_init(&windows[win_count], x, y, w, h, title, draw);
     win_count++;
+    // Newly created window becomes focused
+    focused_window = win_count - 1;
 }
 
 void dwm_register_desktop_app(const char *title, int icon_x, int icon_y, int icon_w, int icon_h, void (*draw)(void)) {
@@ -50,10 +74,25 @@ void dwm_register_desktop_app(const char *title, int icon_x, int icon_y, int ico
         if (!apps[i].used) {
             apps[i].used = 1;
             apps[i].title = title;
-            apps[i].x = icon_x;
-            apps[i].y = icon_y;
-            apps[i].w = icon_w;
-            apps[i].h = icon_h;
+            // If caller didn't specify sizes/positions, auto-place
+            int w = icon_w <= 0 ? ICON_DEFAULT_W : icon_w;
+            int h = icon_h <= 0 ? ICON_DEFAULT_H : icon_h;
+            apps[i].w = w;
+            apps[i].h = h;
+            if (icon_x < 0 || icon_y < 0 || icon_w <= 0 || icon_h <= 0) {
+                // compute grid placement
+                int sw = (int)screen_buffer.width;
+                int cols = (sw - ICON_START_X) / (w + ICON_SPACING_X);
+                if (cols < 1) cols = 1;
+                int idx = i; // place by slot index
+                int col = idx % cols;
+                int row = idx / cols;
+                apps[i].x = ICON_START_X + col * (w + ICON_SPACING_X);
+                apps[i].y = ICON_START_Y + row * (h + ICON_SPACING_Y);
+            } else {
+                apps[i].x = icon_x;
+                apps[i].y = icon_y;
+            }
             apps[i].draw = draw;
             return;
         }
@@ -104,6 +143,9 @@ void dwm_frame(void) {
                         window_destroy(w);
                         // remove from list
                         for (int j = i; j < win_count - 1; ++j) windows[j] = windows[j+1];
+                        // adjust focused_window if necessary
+                        if (focused_window == i) focused_window = -1;
+                        else if (focused_window > i) focused_window--;
                         win_count--;
                         handled = 1;
                         break;
@@ -112,6 +154,8 @@ void dwm_frame(void) {
                     // start dragging this window and bring to top
                     bring_to_top(i);
                     drag_win = win_count - 1;
+                    // give focus to this window
+                    focused_window = drag_win;
                     drag_off_x = mouse_x - windows[drag_win].x;
                     drag_off_y = mouse_y - windows[drag_win].y;
                     handled = 1;
@@ -151,7 +195,10 @@ void dwm_frame(void) {
     // First render window contents into their buffers
     for (int i = 0; i < win_count; ++i) {
         graphics_set_target(&windows[i].buffer);
+        // Mark which window is currently being rendered so apps can check focus
+        current_window = i;
         windows[i].draw();
+        current_window = -1;
     }
 
     // Now draw desktop (background + icons) onto screen
@@ -162,7 +209,13 @@ void dwm_frame(void) {
     for (int a = 0; a < MAX_APPS; ++a) {
         if (!apps[a].used) continue;
         graphics_draw_rectangle(apps[a].x, apps[a].y, apps[a].w, apps[a].h, RGB(60,60,140));
-        graphics_draw_string(apps[a].x + 6, apps[a].y + apps[a].h + 4, apps[a].title, RGB(255,255,255), 1);
+        // center title text under icon
+        int len = 0;
+        const char *s = apps[a].title;
+        while (s && s[len]) ++len;
+        int text_w = len * 8; // approx 8px per char at scale 1
+        int text_x = apps[a].x + (apps[a].w - text_w) / 2;
+        graphics_draw_string(text_x, apps[a].y + apps[a].h + 4, apps[a].title, RGB(255,255,255), 1);
     }
 
     // Blit windows in order (0 = bottom, last = top)

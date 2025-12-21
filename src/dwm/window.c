@@ -10,6 +10,8 @@ void window_init(Window *w, int x, int y, int width, int height, const char *tit
     w->alive = 1;
     w->draw = draw;
     w->title = title;
+    static unsigned int next_window_id = 1;
+    w->id = next_window_id++;
 
     w->buffer.width  = width;
     w->buffer.height = height;
