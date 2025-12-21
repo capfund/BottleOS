@@ -1,5 +1,6 @@
 #include "ps2.h"
 #include <stdint.h>
+#include "../dwm/event.h"
 
 extern uint8_t inb(uint16_t port);
 extern void outb(uint16_t port, uint8_t val);
@@ -129,6 +130,15 @@ int mouse_poll(MousePacket *out) {
     out->left = left;
     out->right = right;
     out->middle = middle;
+
+    InputEvent ev;
+    ev.type = EVENT_MOUSE_MOVE;
+    ev.u.mouse.dx = dx;
+    ev.u.mouse.dy = dy;
+    ev.u.mouse.left = left;
+    ev.u.mouse.right = right;
+    ev.u.mouse.middle = middle;
+    event_push(&ev);
 
     return 1;
 }

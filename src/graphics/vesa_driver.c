@@ -1,5 +1,8 @@
 #include "vesa_driver.h"
 #include "../clib/clib.h"
+#include "../graphics/graphics.h"
+#include "../keyboard/keyboard.h"
+#include "../power/power.h"
 
 static uint32_t *framebuffer = 0;
 
@@ -20,6 +23,10 @@ static void vesa_init(void) {
 
     uint32_t bytes = fb_pitch * fb_height;
     uint32_t *bb = (uint32_t *)malloc(bytes);
+    if (!bb) {
+        vesa_kernel_panic("vesa_init: failed to allocate backbuffer\n");
+        return; // should not return, panic will handle
+    }
 
     screen_buffer.pixels = bb;
     screen_buffer.width  = fb_width;
@@ -30,6 +37,43 @@ static void vesa_init(void) {
 
     for (uint32_t i = 0; i < bytes / 4; i++)
         bb[i] = 0;
+}
+
+// Kernel panic helper that draws directly using the known framebuffer.
+// Shows a message and waits for Ctrl+X to shutdown.
+void vesa_kernel_panic(const char *msg) {
+    if (!framebuffer) {
+        // nothing we can do
+        for (;;);
+    }
+
+    // set screen_buffer to point at the real framebuffer so driver drawing works
+    screen_buffer.pixels = framebuffer;
+    screen_buffer.width  = fb_width;
+    screen_buffer.height = fb_height;
+    screen_buffer.pitch  = fb_pitch;
+    current_target = &screen_buffer;
+
+    // Clear to red
+    graphics_clear_screen(RGB(80, 0, 0));
+
+    // Draw panic text
+    graphics_draw_string(20, 20, "KERNEL PANIC", RGB(255,255,255), 2);
+    graphics_draw_string(20, 50, msg, RGB(255,255,255), 1);
+    graphics_draw_string(20, 80, "Press Ctrl+X to shutdown.", RGB(255,255,255), 1);
+    graphics_present();
+
+    //int ctrl = 0;
+    while (1) {
+        unsigned char sc = keyboard_get_scancode();
+        if (!sc) continue;
+        keyboard_handle_modifier(sc);
+        char c = keyboard_scancode_to_ascii(sc);
+        if (keyboard_is_ctrl_pressed() && (c == 'x' || c == 'X')) {
+            power_off();
+            for (;;);
+        }
+    }
 }
 
 static void vesa_clear_screen(graphics_color_t color) {

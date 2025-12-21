@@ -3,6 +3,8 @@
 #include "blit.h"
 #include "../graphics/graphics.h"
 #include "../mouse/ps2.h"
+#include "event.h"
+#include "../keyboard/keyboard.h"
 
 extern graphics_buffer_t screen_buffer;
 
@@ -102,6 +104,7 @@ void dwm_register_desktop_app(const char *title, int icon_x, int icon_y, int ico
 void dwm_init(void) {
     // initialize mouse (ignore failures for now)
     mouse_init();
+    event_init();
     win_count = 0;
     // let compiled-in modules register their apps
     modules_init();
@@ -109,9 +112,35 @@ void dwm_init(void) {
 
 void dwm_frame(void) {
     MousePacket pkt;
+    InputEvent ev;
 
-    // Poll all available mouse packets and update state
+    // Poll drivers to generate events (non-blocking)
+    // poll mouse hardware (ps2 mouse) to push any pending packets
     while (mouse_poll(&pkt) == 1) {
+        (void)0; // ps2.c already pushes events when packets are assembled
+    }
+
+    // poll keyboard non-blocking to push scancodes
+    unsigned char sc;
+    while ((sc = keyboard_poll_scancode()) != 0) {
+        (void)sc; // keyboard_poll_scancode pushes events
+    }
+
+    // Drain central input event queue but only consume mouse events.
+    // Leave key events in the queue so focused apps can consume them during their draw().
+    while (event_pop(&ev)) {
+        if (ev.type != EVENT_MOUSE_MOVE) {
+            // put non-mouse event back and stop draining
+            event_push(&ev);
+            break;
+        }
+
+        pkt.dx = ev.u.mouse.dx;
+        pkt.dy = ev.u.mouse.dy;
+        pkt.left = ev.u.mouse.left;
+        pkt.right = ev.u.mouse.right;
+        pkt.middle = ev.u.mouse.middle;
+
         mouse_x += pkt.dx;
         mouse_y -= pkt.dy;
 

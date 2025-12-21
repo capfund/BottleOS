@@ -13,5 +13,6 @@ void vesa_init_from_multiboot(
 );
 
 extern graphics_driver_t graphics_vesa_driver;
+void vesa_kernel_panic(const char *msg);
 
 #endif

@@ -1,5 +1,6 @@
 #include "keyboard.h"
 #include "../clib/clib.h"
+#include "../dwm/event.h"
 
 static int shift_pressed = 0;
 static int ctrl_pressed = 0;
@@ -47,7 +48,12 @@ unsigned char keyboard_get_scancode(void) {
         uint8_t status = inb(KEYBOARD_STATUS_PORT);
         if (status & 1) {              // output buffer full
             if (status & 0x20) continue; // skip mouse
-            return inb(KEYBOARD_DATA_PORT);
+            unsigned char sc = inb(KEYBOARD_DATA_PORT);
+            InputEvent ev;
+            ev.type = EVENT_KEY;
+            ev.u.key.scancode = sc;
+            event_push(&ev);
+            return sc;
         }
     }
     return 0;
@@ -57,7 +63,12 @@ unsigned char keyboard_poll_scancode(void) {
     uint8_t status = inb(KEYBOARD_STATUS_PORT);
     if (!(status & 1)) return 0;
     if (status & 0x20) return 0;
-    return inb(KEYBOARD_DATA_PORT);
+    unsigned char sc = inb(KEYBOARD_DATA_PORT);
+    InputEvent ev;
+    ev.type = EVENT_KEY;
+    ev.u.key.scancode = sc;
+    event_push(&ev);
+    return sc;
 }
 
 int keyboard_is_shift_pressed(void) { return shift_pressed; }

@@ -3,6 +3,7 @@
 #include "../graphics/graphics.h"
 #include "../keyboard/keyboard.h"
 #include "../clib/clib.h"
+#include "event.h"
 
 #define INPUT_BUFFER_SIZE 128
 #define MAX_HISTORY_LINES 32
@@ -81,10 +82,16 @@ void shell_app_draw(void) {
     }
     if (!inst) return; // no slot available
 
-    // Only poll keyboard when this window is focused
+    // Consume key events from central queue when this window is focused
     if (dwm_is_current_window_focused()) {
-        unsigned char scancode = keyboard_get_scancode();
-        if (scancode) {
+        InputEvent ev;
+        while (event_pop(&ev)) {
+            if (ev.type != EVENT_KEY) {
+                // re-queue non-key events for the WM
+                event_push(&ev);
+                break;
+            }
+            unsigned char scancode = ev.u.key.scancode;
             keyboard_handle_modifier(scancode);
             if (!(scancode & 0x80)) {
                 char c = keyboard_scancode_to_ascii(scancode);

@@ -83,35 +83,86 @@ void *memset(void *dest, int value, size_t n) {
     return dest;
 }
 
-// allocs clib
+// simple free-list allocator
 #define HEAP_SIZE (16 * 1024 * 1024) // 16MB heap
 
 static uint8_t heap[HEAP_SIZE];
-static size_t heap_index = 0;
+
+typedef struct block_header {
+    size_t size;
+    struct block_header *next;
+    int free;
+} block_header;
+
+static block_header *free_list = NULL;
+
+// forward declare panic from vesa driver (display on framebuffer)
+extern void vesa_kernel_panic(const char *msg);
+
+static size_t align8(size_t v) {
+    return (v + 7) & ~((size_t)7);
+}
 
 void *malloc(size_t size) {
-    if (heap_index + size >= HEAP_SIZE) {
-        return 0; // out of memory
+    if (size == 0) return NULL;
+    size = align8(size);
+
+    if (!free_list) {
+        // initialize a single free block covering the whole heap
+        free_list = (block_header *)heap;
+        free_list->size = HEAP_SIZE - sizeof(block_header);
+        free_list->next = NULL;
+        free_list->free = 1;
     }
 
-    void *ptr = &heap[heap_index];
-    heap_index += size;
+    block_header *cur = free_list;
 
-    // Align heap_index to 8 bytes for safety
-    if (heap_index & 7)
-        heap_index = (heap_index + 7) & ~7;
+    while (cur) {
+        if (cur->free && cur->size >= size) {
+            // found a fit
+            if (cur->size >= size + sizeof(block_header) + 8) {
+                // split
+                uint8_t *split_at = (uint8_t *)cur + sizeof(block_header) + size;
+                block_header *newb = (block_header *)split_at;
+                newb->size = cur->size - size - sizeof(block_header);
+                newb->next = cur->next;
+                newb->free = 1;
 
-    return ptr;
+                cur->size = size;
+                cur->next = newb;
+            }
+
+            cur->free = 0;
+            return (void *)((uint8_t *)cur + sizeof(block_header));
+        }
+        cur = cur->next;
+    }
+
+    // out of memory: trigger kernel panic (if available)
+    vesa_kernel_panic("malloc(): out of memory\n");
+    return NULL;
 }
 
 void free(void *ptr) {
-    // No-op in this simple bump allocator
-    // You can later implement block freeing if needed
-    (void)ptr;
+    if (!ptr) return;
+    block_header *hdr = (block_header *)((uint8_t *)ptr - sizeof(block_header));
+    hdr->free = 1;
+
+    // coalesce adjacent free blocks
+    block_header *cur = free_list;
+    while (cur && cur->next) {
+        uint8_t *cur_end = (uint8_t *)cur + sizeof(block_header) + cur->size;
+        if (cur->free && cur->next->free && cur_end == (uint8_t *)cur->next) {
+            cur->size += sizeof(block_header) + cur->next->size;
+            cur->next = cur->next->next;
+            continue; // try coalescing again at same cur
+        }
+        cur = cur->next;
+    }
 }
 
 void malloc_reset(void) {
-    heap_index = 0; // optional helper to reset heap (like after a program exits)
+    free_list = NULL;
 }
 
 //
