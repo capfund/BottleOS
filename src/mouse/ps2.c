@@ -1,17 +1,8 @@
+#include "ps2.h"
 #include <stdint.h>
-#include <stddef.h>
 
 extern uint8_t inb(uint16_t port);
 extern void outb(uint16_t port, uint8_t val);
-
-typedef struct {
-    int8_t dx;
-    int8_t dy;
-    int8_t dz;
-    uint8_t left;
-    uint8_t right;
-    uint8_t middle;
-} MousePacket;
 
 #define PS2_DATA_PORT    0x60
 #define PS2_STATUS_PORT  0x64
@@ -26,11 +17,10 @@ typedef struct {
 static const int TIMEOUT = 100000;
 static const int COMMAND_RETRIES = 3;
 
-/* Low-level helpers */
 int mouse_try_read_byte(void) {
     uint8_t status = inb(PS2_STATUS_PORT);
     if (!(status & PS2_STATUS_OBF)) return -1;   // no data
-    if (!(status & 0x20)) return -1;             // not mouse data
+    if (!(status & 0x20)) return -1;             // not mouse
     return inb(PS2_DATA_PORT);
 }
 
@@ -40,16 +30,9 @@ static int ps2_wait_input_clear(void) {
     return (t <= 0) ? -1 : 0;
 }
 
-/*static int ps2_wait_output_full(void) {
-    int t = TIMEOUT;
-    while (t-- && !(inb(PS2_STATUS_PORT) & PS2_STATUS_OBF));
-    return (t <= 0) ? -1 : 0;
-} (unused)*/
-
 static void ps2_flush_input(void) {
-    const int MAX_FLUSH = 64;
     int n = 0;
-    while ((inb(PS2_STATUS_PORT) & PS2_STATUS_OBF) && n++ < MAX_FLUSH) {
+    while ((inb(PS2_STATUS_PORT) & PS2_STATUS_OBF) && n++ < 64) {
         (void)inb(PS2_DATA_PORT);
     }
 }
@@ -66,10 +49,8 @@ static int mouse_read_timeout(void) {
     int t = TIMEOUT;
     while (t-- && !(inb(PS2_STATUS_PORT) & PS2_STATUS_OBF));
     if (t <= 0) return -1;
-
     uint8_t status = inb(PS2_STATUS_PORT);
-    if (!(status & 0x20)) return -1; // not mouse data
-
+    if (!(status & 0x20)) return -1; // skip keyboard
     return inb(PS2_DATA_PORT);
 }
 
@@ -80,7 +61,6 @@ static int mouse_send_command_with_ack(uint8_t cmd) {
         if (resp < 0) return -1;
         if (resp == PS2_ACK) return PS2_ACK;
         if (resp == PS2_RESEND) continue;
-        return resp;
     }
     return -1;
 }
@@ -108,10 +88,14 @@ int mouse_init(void) {
 int mouse_poll(MousePacket *out) {
     static uint8_t buf[3];
     static int index = 0;
+    int dx = 0, dy = 0;
+    uint8_t left=0, right=0, middle=0;
+    int packets = 0;
 
     while (1) {
         int b = mouse_try_read_byte();
-        if (b < 0) return 0;  // no new mouse byte
+        if (b < 0) break; // no more bytes
+
         uint8_t byte = (uint8_t)b;
 
         if (index == 0) {
@@ -123,19 +107,28 @@ int mouse_poll(MousePacket *out) {
 
         buf[index++] = byte;
 
-        if (index >= 3) {
-            index = 0;
-            if (buf[0] & 0xC0) continue; // drop overflow
+        if (index < 3) continue;
 
-            out->dx = (int8_t)buf[1];
-            out->dy = (int8_t)buf[2];
-            out->dz = 0;
+        index = 0;
+        if (buf[0] & 0xC0) continue; // drop overflow
 
-            out->left   = buf[0] & 0x01;
-            out->right  = (buf[0] >> 1) & 1;
-            out->middle = (buf[0] >> 2) & 1;
+        dx += (int8_t)buf[1];
+        dy += (int8_t)buf[2];
+        left   |= buf[0] & 0x01;
+        right  |= (buf[0] >> 1) & 1;
+        middle |= (buf[0] >> 2) & 1;
 
-            return 1;
-        }
+        packets++;
     }
+
+    if (packets == 0) return 0;
+
+    out->dx = dx;
+    out->dy = dy;
+    out->dz = 0;
+    out->left = left;
+    out->right = right;
+    out->middle = middle;
+
+    return 1;
 }
