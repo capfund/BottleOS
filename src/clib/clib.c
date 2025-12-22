@@ -415,3 +415,20 @@ void utoa_dec(unsigned int value, char *buf) {
 
     buf[j] = '\0';
 }
+
+void str_append(char *dst, const char *src, int dst_max)
+{
+    int i = 0;
+    int j = 0;
+
+    // find end of dst
+    while (i < dst_max && dst[i] != '\0')
+        i++;
+
+    // append src
+    while (i < dst_max - 1 && src[j] != '\0') {
+        dst[i++] = src[j++];
+    }
+
+    dst[i] = '\0';
+}

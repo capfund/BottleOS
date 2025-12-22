@@ -8,11 +8,71 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "../clib/clib.h"
+#include "../rtc/rtc.h"
 
 extern graphics_buffer_t screen_buffer;
 
 #define TBH 20 // titlebar height
+#define MBH 20 // menubar height
 #define MAX_WINDOWS 8
+
+/* Internal helpers :) */
+static void write_2d(char *buf, unsigned int v) {
+    buf[0] = '0' + (v / 10);
+    buf[1] = '0' + (v % 10);
+}
+
+static int str_len(const char *s) {
+    int n = 0;
+    while (s && s[n]) n++;
+    return n;
+}
+
+static void format_menubar_time(char *out) {
+    struct rtc_time t;
+    rtc_read(&t);
+
+    write_2d(&out[0], t.hour);
+    out[2] = ':';
+    write_2d(&out[3], t.minute);
+    out[5] = '\0';
+}
+
+static void draw_menu_bar(void) {
+    char timebuf[16];
+    format_menubar_time(timebuf);
+
+    graphics_draw_rectangle(
+        0, 0,
+        screen_buffer.width,
+        MBH,
+        RGB(255,255,255)
+    );
+
+    // Left: OS name
+    graphics_draw_string(
+        8, 4,
+        "BottleOS",
+        RGB(0,0,0),
+        1
+    );
+
+    str_append(timebuf, " UTC", sizeof(timebuf)); // append
+
+    // Right: time
+    int time_len = str_len(timebuf);
+    int time_px = time_len * 8;
+    int x = (int)screen_buffer.width - time_px - 8;
+
+    graphics_draw_string(
+        x, 4,
+        timebuf,
+        RGB(0,0,0),
+        1
+    );
+}
+
+/* Helper internal end */
 
 static Window windows[MAX_WINDOWS];
 static int win_count = 0;
@@ -286,6 +346,7 @@ void dwm_frame(void) {
     // Now draw desktop (background + icons) onto screen
     graphics_set_target(&screen_buffer);
     graphics_clear_screen(RGB(22,172,199));
+    draw_menu_bar();
 
     // Draw registered app icons on the desktop
     for (int a = 0; a < MAX_APPS; ++a) {
