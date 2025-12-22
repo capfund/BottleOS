@@ -1,1 +1,0 @@
-qemu-system-i386 -m 128M -cdrom build/BottleOS.iso -drive file=src/disk.img,format=raw,if=ide
