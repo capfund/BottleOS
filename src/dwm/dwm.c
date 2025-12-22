@@ -17,6 +17,7 @@ extern graphics_buffer_t screen_buffer;
 #define MAX_WINDOWS 8
 
 /* Internal helpers :) */
+
 static void write_2d(char *buf, unsigned int v) {
     buf[0] = '0' + (v / 10);
     buf[1] = '0' + (v % 10);
@@ -28,19 +29,28 @@ static int str_len(const char *s) {
     return n;
 }
 
-static void format_menubar_time(char *out) {
+static char menubar_time[16];
+static int menubar_last_sec = -1;
+
+static void update_menubar_time(void) {
     struct rtc_time t;
     rtc_read(&t);
 
-    write_2d(&out[0], t.hour);
-    out[2] = ':';
-    write_2d(&out[3], t.minute);
-    out[5] = '\0';
+    if (t.second == menubar_last_sec)
+        return;
+
+    menubar_last_sec = t.second;
+
+    write_2d(&menubar_time[0], t.hour);
+    menubar_time[2] = ':';
+    write_2d(&menubar_time[3], t.minute);
+    menubar_time[5] = '\0';
+
+    str_append(menubar_time, " UTC", sizeof(menubar_time));
 }
 
 static void draw_menu_bar(void) {
-    char timebuf[16];
-    format_menubar_time(timebuf);
+    update_menubar_time();
 
     graphics_draw_rectangle(
         0, 0,
@@ -49,7 +59,6 @@ static void draw_menu_bar(void) {
         RGB(255,255,255)
     );
 
-    // Left: OS name
     graphics_draw_string(
         8, 4,
         "BottleOS",
@@ -57,16 +66,13 @@ static void draw_menu_bar(void) {
         1
     );
 
-    str_append(timebuf, " UTC", sizeof(timebuf)); // append
-
-    // Right: time
-    int time_len = str_len(timebuf);
+    int time_len = str_len(menubar_time);
     int time_px = time_len * 8;
     int x = (int)screen_buffer.width - time_px - 8;
 
     graphics_draw_string(
         x, 4,
-        timebuf,
+        menubar_time,
         RGB(0,0,0),
         1
     );
