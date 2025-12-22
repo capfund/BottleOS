@@ -52,5 +52,6 @@ void clib_cpu_frame_decay(void);
 char *strcpy(char *dest, const char *src);
 char *strcat(char *dest, const char *src);
 int atoi(const char *s);
+void utoa_dec(unsigned int value, char *buf);
 
 #endif

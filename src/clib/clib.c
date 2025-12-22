@@ -393,3 +393,25 @@ unsigned long long __udivdi3(unsigned long long n, unsigned long long d) {
     }
     return q;
 }
+
+void utoa_dec(unsigned int value, char *buf) {
+    char tmp[16];
+    int i = 0, j = 0;
+
+    if (value == 0) {
+        buf[0] = '0';
+        buf[1] = '\0';
+        return;
+    }
+
+    while (value > 0) {
+        tmp[i++] = '0' + (value % 10);
+        value /= 10;
+    }
+
+    while (i > 0) {
+        buf[j++] = tmp[--i];
+    }
+
+    buf[j] = '\0';
+}
