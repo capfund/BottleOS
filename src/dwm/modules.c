@@ -10,6 +10,7 @@ void modules_init(void) {
     // Register the shell app at a sensible desktop position
     // Let DWM auto-place the app icon by passing zero/negative for size/pos
     dwm_register_desktop_app("Shell", -1, -1, 0, 0, shell_app_draw);
+    dwm_set_app_window_size("Shell", 325, 205);
 
     // Register a Shutdown app which triggers power_off when its window is created/drawn
     dwm_register_desktop_app("Shutdown", -1, -1, 0, 0, shutdown_app_draw);

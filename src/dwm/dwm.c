@@ -18,6 +18,12 @@ extern graphics_buffer_t screen_buffer;
 
 /* Internal helpers :) */
 
+static inline int clamp(int v, int min, int max) {
+    if (v < min) return min;
+    if (v > max) return max;
+    return v;
+}
+
 static void write_2d(char *buf, unsigned int v) {
     buf[0] = '0' + (v / 10);
     buf[1] = '0' + (v % 10);
@@ -30,22 +36,19 @@ static int str_len(const char *s) {
 }
 
 static char menubar_time[16];
-static int menubar_last_sec = -1;
+static int menubar_last_min = -1;
 
 static void update_menubar_time(void) {
     struct rtc_time t;
     rtc_read(&t);
 
-    if (t.second == menubar_last_sec)
-        return;
+    if (t.minute == menubar_last_min) return;
 
-    menubar_last_sec = t.second;
-
+    menubar_last_min = t.minute;
     write_2d(&menubar_time[0], t.hour);
     menubar_time[2] = ':';
     write_2d(&menubar_time[3], t.minute);
     menubar_time[5] = '\0';
-
     str_append(menubar_time, " UTC", sizeof(menubar_time));
 }
 
@@ -253,10 +256,8 @@ void dwm_frame(void) {
         mouse_y -= pkt.dy;
 
         // Clamp
-        if (mouse_x < 0) mouse_x = 0;
-        if (mouse_x > ((int)screen_buffer.width - 1)) mouse_x = ((int)screen_buffer.width - 1);
-        if (mouse_y < 0) mouse_y = 0;
-        if (mouse_y > ((int)screen_buffer.height - 1)) mouse_y = ((int)screen_buffer.height - 1);
+        mouse_x = clamp(mouse_x, 0, (int)screen_buffer.width - 1);
+        mouse_y = clamp(mouse_y, 0, (int)screen_buffer.height - 1);
 
         // Left button pressed
         if (pkt.left && !prev_left) {
