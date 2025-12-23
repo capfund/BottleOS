@@ -230,12 +230,12 @@ void dwm_frame(void) {
     while (mouse_poll(&pkt) == 1) {
         (void)0; // ps2.c already pushes events when packets are assembled
     }
-
-    // poll keyboard non-blocking to push scancodes
-    unsigned char sc;
-    while ((sc = keyboard_poll_scancode()) != 0) {
+    
+    /* old implementation while ((sc = keyboard_poll_scancode()) != 0) {
         (void)sc; // keyboard_poll_scancode pushes events
-    }
+    } */
+
+    keyboard_drain();
 
     // Drain central input event queue but only consume mouse events.
     // Leave key events in the queue so focused apps can consume them during their draw().

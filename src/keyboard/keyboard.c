@@ -71,6 +71,24 @@ unsigned char keyboard_poll_scancode(void) {
     return sc;
 }
 
+void keyboard_drain(void) {
+    while (1) {
+        uint8_t status = inb(KEYBOARD_STATUS_PORT);
+        if (!(status & 1)) break;
+        if (status & 0x20) {
+            inb(KEYBOARD_DATA_PORT); // discard mouse
+            continue;
+        }
+
+        unsigned char sc = inb(KEYBOARD_DATA_PORT);
+        InputEvent ev;
+        ev.type = EVENT_KEY;
+        ev.u.key.scancode = sc;
+        event_push(&ev);
+    }
+}
+
+
 int keyboard_is_shift_pressed(void) { return shift_pressed; }
 int keyboard_is_ctrl_pressed(void)  { return ctrl_pressed; }
 int keyboard_is_caps_lock_on(void)  { return caps_lock_on; }
