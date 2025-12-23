@@ -255,6 +255,8 @@ void *malloc(size_t size) {
 void free(void *ptr) {
     if (!ptr) return;
     block_header *hdr = (block_header *)((uint8_t *)ptr - sizeof(block_header));
+    if (hdr->free)
+        vesa_kernel_panic("free(): double free"); // double free detected
     hdr->free = 1;
 
     // coalesce adjacent free blocks
@@ -381,7 +383,10 @@ int atoi(const char *s) {
 // Provide libgcc-style 64-bit unsigned division helper to avoid linker
 // dependency on compiler-rt/libgcc. Simple long division algorithm.
 unsigned long long __udivdi3(unsigned long long n, unsigned long long d) {
-    if (d == 0) return (unsigned long long)-1;
+    if (d == 0) {
+        // old beh: return (unsigned long long)-1;
+        vesa_kernel_panic("__udivdi3: division by zero\n");
+    }
     unsigned long long q = 0;
     unsigned long long r = 0;
     for (int i = 63; i >= 0; --i) {
