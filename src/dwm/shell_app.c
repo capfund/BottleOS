@@ -117,10 +117,18 @@ static void shell_read_file(ShellInstance *inst, const char *filename) {
         return;
     }
 
-    for (int i = 0; i < read_bytes; i++) {
-        char tmp[2] = { buffer[i], '\0' };
-        history_push(inst, tmp);
+    char *btmp = malloc(read_bytes + 1);
+    if (!btmp) {
+        history_push(inst, "Memory allocation error");
+        return;
     }
+
+    for (int i = 0; i < read_bytes; i++) {
+        btmp[i] = buffer[i];
+    }
+    btmp[read_bytes] = '\0';
+    history_push(inst, btmp);
+    free(btmp);
 }
 
 
@@ -151,10 +159,12 @@ static void process_command(ShellInstance *inst, const char *cmd) {
         history_push(inst, fs_get_current_dir());
     } else if (strcmp(cmd, "ls") == 0) {
         char *listing = fs_list_files_str();
-        if (listing) {
-            history_push(inst, listing);
-            free(listing);
-        }
+        char *ln = strtok(listing, "\n");
+        while (ln) {
+            history_push(inst, ln);
+            ln = strtok(NULL, "\n");
+        } 
+        free(listing);
     } else {
         history_push(inst, "Unknown command");
     }

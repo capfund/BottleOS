@@ -437,3 +437,45 @@ void str_append(char *dst, const char *src, int dst_max)
 
     dst[i] = '\0';
 }
+
+char* strtok(char *str, const char *delim) {
+    static char *next; // keeps track between calls
+    if (str) next = str;
+
+    if (!next) return NULL; // no more tokens
+
+    // Skip leading delimiters
+    while (*next) {
+        const char *d = delim;
+        int matched = 0;
+        while (*d) {
+            if (*next == *d) { matched = 1; break; }
+            d++;
+        }
+        if (!matched) break;
+        next++;
+    }
+
+    if (*next == '\0') return NULL; // end of string
+
+    // Start of token
+    char *token_start = next;
+
+    // Find next delimiter
+    while (*next) {
+        const char *d = delim;
+        int matched = 0;
+        while (*d) {
+            if (*next == *d) { matched = 1; break; }
+            d++;
+        }
+        if (matched) {
+            *next = '\0'; // terminate token
+            next++;       // move past delimiter
+            break;
+        }
+        next++;
+    }
+
+    return token_start;
+}

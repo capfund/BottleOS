@@ -54,5 +54,6 @@ char *strcat(char *dest, const char *src);
 int atoi(const char *s);
 void utoa_dec(unsigned int value, char *buf);
 void str_append(char *dst, const char *src, int dst_max);
+char* strtok(char *str, const char *delim);
 
 #endif
