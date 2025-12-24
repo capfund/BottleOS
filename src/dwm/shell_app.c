@@ -6,6 +6,7 @@
 #include "event.h"
 #include "../fs/fs.h"
 #include "../rtc/rtc.h"
+#include "window.h"
 
 #define INPUT_BUFFER_SIZE 128
 #define MAX_HISTORY_LINES 32
@@ -191,6 +192,103 @@ static void process_command(ShellInstance *inst, const char *cmd) {
             ln = strtok(NULL, "\n");
         } 
         free(listing);
+    } else if (strncmp(cmd, "cd", 2) == 0 && (cmd[2] == ' ' || cmd[2] == '\0')) {
+        // Skip spaces to get to directory name
+        const char *dirname = cmd + 2;
+        while (*dirname == ' ') dirname++;  // skip all spaces
+
+        if (*dirname == '\0') {
+            history_push(inst, "Usage: cd <directory>");
+        } else {
+            int res = fs_change_directory(dirname);
+            if (res == -1) {
+                history_push(inst, "Directory not found");
+            } else if (res == -2) {
+                history_push(inst, "Not a directory");
+            }
+        }
+    } else if (strncmp(cmd, "mkdir", 5) == 0 && (cmd[5] == ' ' || cmd[5] == '\0')) {
+        // Skip spaces to get to directory name
+        const char *dirname = cmd + 5;
+        while (*dirname == ' ') dirname++;  // skip all spaces
+
+        if (*dirname == '\0') {
+            history_push(inst, "Usage: mkdir <directory>");
+        } else {
+            int res = fs_create_directory(dirname);
+            if (res != 0) {
+                history_push(inst, "Error creating directory");
+            }
+        }
+    } else if (strncmp(cmd, "rmdir", 5) == 0 && (cmd[5] == ' ' || cmd[5] == '\0')) {
+        // Skip spaces to get to directory name
+        const char *dirname = cmd + 5;
+        while (*dirname == ' ') dirname++;  // skip all spaces
+
+        if (*dirname == '\0') {
+            history_push(inst, "Usage: rmdir <directory>");
+        } else {
+            int res = fs_delete_directory(dirname);
+            if (res != 0) {
+                history_push(inst, "Error removing directory");
+            }
+        }
+    } else if (strncmp(cmd, "touch", 5) == 0 && (cmd[5] == ' ' || cmd[5] == '\0')) {
+        // Skip spaces to get to filename
+        const char *filename = cmd + 5;
+        while (*filename == ' ') filename++;  // skip all spaces
+
+        if (*filename == '\0') {
+            history_push(inst, "Usage: touch <filename>");
+        } else {
+            int res = fs_create_file(filename);
+            if (res != 0) {
+                history_push(inst, "Error creating file");
+            }
+        }
+    } else if (strncmp(cmd, "rm", 2) == 0 && (cmd[2] == ' ' || cmd[2] == '\0')) {
+        // Skip spaces to get to filename
+        const char *filename = cmd + 2;
+        while (*filename == ' ') filename++;  // skip all spaces
+
+        if (*filename == '\0') {
+            history_push(inst, "Usage: rm <filename>");
+        } else {
+            int res = fs_delete_file(filename);
+            if (res != 0) {
+                history_push(inst, "Error removing file");
+            }
+        }
+    } else if (strncmp(cmd, "write", 5) == 0 &&
+           (cmd[5] == ' ' || cmd[5] == '\0')) {
+
+        char buf[256];
+        strncpy(buf, cmd, sizeof(buf) - 1);
+        buf[sizeof(buf) - 1] = '\0';
+
+        char *p = buf + 5;
+        while (*p == ' ') p++;
+
+        if (*p == '\0')
+            return;
+
+        char *name = p;
+
+        while (*p && *p != ' ')
+            p++;
+
+        if (*p == '\0') {
+            fs_write_file(name, (const uint8_t *)"", 0);
+            return;
+        }
+
+        *p++ = '\0';
+        while (*p == ' ') p++;
+
+        const uint8_t *data = (const uint8_t *)p;
+        uint32_t size = strlen(p);
+
+        fs_write_file(name, data, size);
     } else {
         history_push(inst, "Unknown command");
     }

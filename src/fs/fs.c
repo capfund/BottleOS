@@ -290,7 +290,7 @@ int fs_write_file(const char *name, const uint8_t *data, uint32_t size) {
   uint32_t blocks_needed = (size + FS_BLOCK_SIZE - 1) / FS_BLOCK_SIZE;
   int start = allocate_blocks(blocks_needed);
   if (start < 0) {
-    vga_putstr("fs: no contiguous space\n", 0x0C);
+    // no contiguous space code -2 err
     return -2;
   }
 
