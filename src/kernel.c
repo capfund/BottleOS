@@ -7,6 +7,7 @@
 #include "clib/clib.h"
 #include <stdbool.h>
 #include "dwm/dwm.h"
+#include "fs/fs.h"
 
 // compatibility reasons
 int light_mode = 0;
@@ -113,6 +114,7 @@ void kernel_main(uint32_t magic, uint32_t addr) {
         graphics_present();
     }*/
     
+    fs_init();
     dwm_init();
 
     for (;;) {

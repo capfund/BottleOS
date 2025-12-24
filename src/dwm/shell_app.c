@@ -4,6 +4,7 @@
 #include "../keyboard/keyboard.h"
 #include "../clib/clib.h"
 #include "event.h"
+#include "../fs/fs.h"
 #include "../rtc/rtc.h"
 
 #define INPUT_BUFFER_SIZE 128
@@ -106,6 +107,23 @@ static void shell_print_unixtime(ShellInstance *inst) {
     history_push(inst, buf);
 }
 
+/* Internal Commands */
+static void shell_read_file(ShellInstance *inst, const char *filename) {
+    char buffer[FS_BLOCK_SIZE];
+    int read_bytes = fs_read_file(filename, (uint8_t *)buffer, sizeof(buffer));
+
+    if (read_bytes < 0) {
+        history_push(inst, strcat("Error reading file; no read bytes", read_bytes == -1 ? " (file not found)" : " (buffer too small)"));
+        return;
+    }
+
+    for (int i = 0; i < read_bytes; i++) {
+        char tmp[2] = { buffer[i], '\0' };
+        history_push(inst, tmp);
+    }
+}
+
+
 static void process_command(ShellInstance *inst, const char *cmd) {
     if (!inst) return;
     if (strcmp(cmd, "") == 0) return;
@@ -119,6 +137,18 @@ static void process_command(ShellInstance *inst, const char *cmd) {
         shell_print_time(inst);
     } else if (strcmp(cmd, "unixtime") == 0) {
         shell_print_unixtime(inst);
+    } else if (strncmp(cmd, "read", 4) == 0 && (cmd[4] == ' ' || cmd[4] == '\0')) {
+        // Skip spaces to get to filename
+        const char *filename = cmd + 4;
+        while (*filename == ' ') filename++;  // skip all spaces
+
+        if (*filename == '\0') {
+            history_push(inst, "Usage: read <filename>");
+        } else {
+            shell_read_file(inst, filename);
+        }
+    } else if (strcmp(cmd, "pwd") == 0) {
+        history_push(inst, fs_get_current_dir());
     } else {
         history_push(inst, "Unknown command");
     }
