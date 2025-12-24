@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include "../clib/clib.h"
 
 /* In-memory state */
 static fs_superblock_t superblock;
@@ -511,4 +512,100 @@ int fs_change_directory(const char *name) {
   // Change to the directory
   k_strncpy(current_directory, name, FS_FILENAME_LEN);
   return 0;
+}
+
+char* fs_list_files_str(void) {
+    size_t buf_size = 4096; // initial buffer size
+    char *result = malloc(buf_size);
+    if (!result) return NULL;
+    result[0] = '\0';
+    size_t used = 0;
+
+    int prefix_len = 0;
+    char prefix[FS_FILENAME_LEN];
+
+    if (strcmp(current_directory, "/") != 0) {
+        k_strncpy(prefix, current_directory, FS_FILENAME_LEN);
+        prefix_len = 0;
+        while (prefix[prefix_len]) prefix_len++;
+        if (prefix_len > 0 && prefix[prefix_len - 1] != '/') {
+            prefix[prefix_len++] = '/';
+            prefix[prefix_len] = '\0';
+        }
+    }
+
+    for (uint32_t i = 0; i < superblock.max_files; i++) {
+        if (!file_table[i].used) continue;
+        if (!is_valid_filename(file_table[i].name)) continue;
+
+        char *display_name = file_table[i].name;
+
+        if (prefix_len > 0) {
+            if (k_strncmp(file_table[i].name, prefix, prefix_len) != 0) continue;
+            display_name = file_table[i].name + prefix_len;
+        } else {
+            int has_slash = 0;
+            for (size_t k = 0; file_table[i].name[k]; k++) {
+                if (file_table[i].name[k] == '/') { has_slash = 1; break; }
+            }
+            if (has_slash) continue;
+        }
+
+        if (strcmp(display_name, "@") == 0 || strcmp(display_name, "2") == 0) continue;
+
+        char line[128];
+        size_t pos = 0;
+
+        const char *tag = file_table[i].is_directory ? "[DIR] " : "      ";
+        size_t j = 0;
+        while (tag[j] && pos < sizeof(line) - 1) line[pos++] = tag[j++];
+
+        j = 0;
+        while (display_name[j] && pos < sizeof(line) - 1) line[pos++] = display_name[j++];
+
+        if (!file_table[i].is_directory) {
+            char dec[12];
+            uint32_t s = file_table[i].size;
+            int dpos = 0;
+            if (s == 0) dec[dpos++] = '0';
+            else {
+                char rev[12];
+                int r = 0;
+                while (s) { rev[r++] = '0' + (s % 10); s /= 10; }
+                while (r--) dec[dpos++] = rev[r];
+            }
+            dec[dpos] = '\0';
+
+            const char *bytes = " bytes";
+            if (pos < sizeof(line) - 1) line[pos++] = ' ';
+            if (pos < sizeof(line) - 1) line[pos++] = '(';
+            j = 0;
+            while (dec[j] && pos < sizeof(line) - 1) line[pos++] = dec[j++];
+            if (pos < sizeof(line) - 1) line[pos++] = ' ';
+            j = 0;
+            while (bytes[j] && pos < sizeof(line) - 1) line[pos++] = bytes[j++];
+            if (pos < sizeof(line) - 1) line[pos++] = ')';
+        }
+
+        if (pos < sizeof(line) - 1) line[pos++] = '\n';
+        line[pos] = '\0';
+
+        size_t line_len = pos;
+        if (used + line_len + 1 > buf_size) {
+            // expand buffer
+            size_t new_size = buf_size * 2;
+            char *tmp = malloc(new_size);
+            if (!tmp) { free(result); return NULL; }
+            memcpy(tmp, result, used);
+            free(result);
+            result = tmp;
+            buf_size = new_size;
+        }
+
+        memcpy(result + used, line, line_len);
+        used += line_len;
+        result[used] = '\0';
+    }
+
+    return result;
 }

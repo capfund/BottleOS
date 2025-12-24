@@ -40,6 +40,7 @@ int fs_write_file(const char *name, const uint8_t *data, uint32_t size);
 int fs_read_file(const char *name, uint8_t *buf, uint32_t bufsize);
 int fs_delete_file(const char *name);
 void fs_list_files(void);
+char* fs_list_files_str(void);
 int fs_sync(void); /* write metadata+table+data back to module memory
                       (non-durable on host) */
 

@@ -149,6 +149,12 @@ static void process_command(ShellInstance *inst, const char *cmd) {
         }
     } else if (strcmp(cmd, "pwd") == 0) {
         history_push(inst, fs_get_current_dir());
+    } else if (strcmp(cmd, "ls") == 0) {
+        char *listing = fs_list_files_str();
+        if (listing) {
+            history_push(inst, listing);
+            free(listing);
+        }
     } else {
         history_push(inst, "Unknown command");
     }
