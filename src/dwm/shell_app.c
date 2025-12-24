@@ -251,12 +251,11 @@ void shell_app_draw(void) {
         y += LINE_HEIGHT;
     }
 
-    // Optional: render current typing line as "> <typed so far>"
+    char typing[INPUT_BUFFER_SIZE + 4];
+    strncpy(typing, "> ", sizeof(typing));
+    typing[sizeof(typing)-1] = '\0';
     if (inst->input_pos > 0) {
-        char typing[INPUT_BUFFER_SIZE + 4];
-        strncpy(typing, "> ", sizeof(typing));
-        typing[sizeof(typing)-1] = '\0';
         strncat(typing, inst->input_buffer, sizeof(typing)-strlen(typing)-1);
-        graphics_draw_string(6, y, typing, RGB(200,255,200), 1);
     }
+    graphics_draw_string(6, y, typing, RGB(200,255,200), 1);
 }
