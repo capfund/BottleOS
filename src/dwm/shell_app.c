@@ -171,14 +171,12 @@ static void process_command(ShellInstance *inst, const char *cmd) {
 }
 
 void shell_app_draw(void) {
-    // This function is called with the graphics target set to the window buffer.
+    // Clear the window buffer
     graphics_clear_screen(RGB(30,30,30));
-    // Lookup per-window instance state using the DWM stable window id
+
+    // Lookup current window instance
     int win_id = dwm_get_current_window_id();
-    if (win_id < 0) {
-        // not rendering a window (shouldn't normally happen)
-        return;
-    }
+    if (win_id < 0) return;
 
     ShellInstance *inst = NULL;
     for (int i = 0; i < SHELL_MAX_INSTANCES; ++i) {
@@ -188,49 +186,57 @@ void shell_app_draw(void) {
         }
     }
     if (!inst) {
-        // allocate new instance slot
         for (int i = 0; i < SHELL_MAX_INSTANCES; ++i) {
             if (!instances[i].used) {
                 instances[i].used = 1;
                 instances[i].id = win_id;
-                instances[i].input_buffer[0] = '\0';
-                instances[i].input_pos = 0;
-                instances[i].history_count = 0;
                 inst = &instances[i];
+                inst->input_buffer[0] = '\0';
+                inst->input_pos = 0;
+                inst->history_count = 0;
                 break;
             }
         }
     }
-    if (!inst) return; // no slot available
+    if (!inst) return;
 
-    // Consume key events from central queue when this window is focused
+    // Consume key events
     if (dwm_is_current_window_focused()) {
         InputEvent ev;
         while (event_pop(&ev)) {
             if (ev.type != EVENT_KEY) {
-                // re-queue non-key events for the WM
                 event_push(&ev);
                 break;
             }
             unsigned char scancode = ev.u.key.scancode;
             keyboard_handle_modifier(scancode);
-            if (!(scancode & 0x80)) {
+            if (!(scancode & 0x80)) { // key press
                 char c = keyboard_scancode_to_ascii(scancode);
-                if (c) {
-                    if (c == '\n') {
+                if (!c) continue;
+
+                if (c == '\n') {
+                    // Push typed command as "> command"
+                    if (inst->input_pos > 0) {
                         inst->input_buffer[inst->input_pos] = '\0';
-                        history_push(inst, inst->input_buffer);
+                        char cmdline[INPUT_BUFFER_SIZE + 4];
+                        strncpy(cmdline, "> ", sizeof(cmdline));
+                        cmdline[sizeof(cmdline)-1] = '\0';
+                        strncat(cmdline, inst->input_buffer, sizeof(cmdline)-strlen(cmdline)-1);
+                        history_push(inst, cmdline);
+
+                        // Process the command
                         process_command(inst, inst->input_buffer);
+
                         inst->input_pos = 0;
                         inst->input_buffer[0] = '\0';
-                    } else if (c == '\b') {
-                        if (inst->input_pos > 0) inst->input_pos--;
+                    }
+                } else if (c == '\b') {
+                    if (inst->input_pos > 0) inst->input_pos--;
+                    inst->input_buffer[inst->input_pos] = '\0';
+                } else {
+                    if (inst->input_pos < INPUT_BUFFER_SIZE - 1) {
+                        inst->input_buffer[inst->input_pos++] = c;
                         inst->input_buffer[inst->input_pos] = '\0';
-                    } else {
-                        if (inst->input_pos < (INPUT_BUFFER_SIZE - 1)) {
-                            inst->input_buffer[inst->input_pos++] = c;
-                            inst->input_buffer[inst->input_pos] = '\0';
-                        }
                     }
                 }
             }
@@ -245,9 +251,12 @@ void shell_app_draw(void) {
         y += LINE_HEIGHT;
     }
 
-    // Render prompt and current input
-    char prompt[INPUT_BUFFER_SIZE + 4];
-    strncpy(prompt, "> ", 3);
-    strncat(prompt, inst->input_buffer, sizeof(prompt) - 3);
-    graphics_draw_string(6, 200 - 18, prompt, RGB(200,255,200), 1);
+    // Optional: render current typing line as "> <typed so far>"
+    if (inst->input_pos > 0) {
+        char typing[INPUT_BUFFER_SIZE + 4];
+        strncpy(typing, "> ", sizeof(typing));
+        typing[sizeof(typing)-1] = '\0';
+        strncat(typing, inst->input_buffer, sizeof(typing)-strlen(typing)-1);
+        graphics_draw_string(6, y, typing, RGB(200,255,200), 1);
+    }
 }
