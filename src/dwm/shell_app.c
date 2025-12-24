@@ -10,6 +10,7 @@
 #define INPUT_BUFFER_SIZE 128
 #define MAX_HISTORY_LINES 32
 #define LINE_HEIGHT 10
+#define SHELL_WIDTH 40
 
 #define SHELL_MAX_INSTANCES 16
 
@@ -25,17 +26,42 @@ typedef struct {
 static ShellInstance instances[SHELL_MAX_INSTANCES];
 
 static void history_push(ShellInstance *inst, const char *s) {
-    if (!inst) return;
-    if (inst->history_count < MAX_HISTORY_LINES) {
-        strncpy(inst->history[inst->history_count++], s, sizeof(inst->history[0]) - 1);
-        inst->history[inst->history_count-1][sizeof(inst->history[0]) - 1] = '\0';
-    } else {
-        // roll
-        for (int i = 1; i < MAX_HISTORY_LINES; ++i) strncpy(inst->history[i-1], inst->history[i], sizeof(inst->history[0]));
-        strncpy(inst->history[MAX_HISTORY_LINES-1], s, sizeof(inst->history[0]) - 1);
-        inst->history[MAX_HISTORY_LINES-1][sizeof(inst->history[0]) - 1] = '\0';
+    if (!inst || !s) return;
+
+    const char *start = s;
+    const char *p = s;
+
+    while (1) {
+        if (*p == '\n' || *p == '\0') {
+            // Extract line from start..p
+            char line[128];
+            int len = p - start;
+            if (len >= (int)sizeof(line))
+                len = sizeof(line) - 1;
+            for (int i = 0; i < len; i++)
+                line[i] = start[i];
+            line[len] = '\0';
+
+            // Push line to history
+            if (inst->history_count < MAX_HISTORY_LINES) {
+                strncpy(inst->history[inst->history_count++], line, sizeof(inst->history[0]) - 1);
+                inst->history[inst->history_count-1][sizeof(inst->history[0]) - 1] = '\0';
+            } else {
+                // Roll history
+                for (int i = 1; i < MAX_HISTORY_LINES; ++i)
+                    strncpy(inst->history[i-1], inst->history[i], sizeof(inst->history[0]));
+                strncpy(inst->history[MAX_HISTORY_LINES-1], line, sizeof(inst->history[0]) - 1);
+                inst->history[MAX_HISTORY_LINES-1][sizeof(inst->history[0]) - 1] = '\0';
+            }
+
+            if (*p == '\0')
+                break; // done
+            start = p + 1; // skip newline
+        }
+        p++;
     }
 }
+
 
 static void write_2d(char *buf, unsigned int v) {
     buf[0] = '0' + (v / 10);
@@ -145,13 +171,13 @@ static void process_command(ShellInstance *inst, const char *cmd) {
         shell_print_time(inst);
     } else if (strcmp(cmd, "unixtime") == 0) {
         shell_print_unixtime(inst);
-    } else if (strncmp(cmd, "read", 4) == 0 && (cmd[4] == ' ' || cmd[4] == '\0')) {
+    } else if (strncmp(cmd, "cat", 3) == 0 && (cmd[3] == ' ' || cmd[3] == '\0')) {
         // Skip spaces to get to filename
-        const char *filename = cmd + 4;
+        const char *filename = cmd + 3;
         while (*filename == ' ') filename++;  // skip all spaces
 
         if (*filename == '\0') {
-            history_push(inst, "Usage: read <filename>");
+            history_push(inst, "Usage: cat <filename>");
         } else {
             shell_read_file(inst, filename);
         }
@@ -171,7 +197,7 @@ static void process_command(ShellInstance *inst, const char *cmd) {
 }
 
 void shell_app_draw(void) {
-    // Clear the window buffer
+    // Clear window buffer
     graphics_clear_screen(RGB(30,30,30));
 
     // Lookup current window instance
@@ -215,13 +241,17 @@ void shell_app_draw(void) {
                 if (!c) continue;
 
                 if (c == '\n') {
-                    // Push typed command as "> command"
+                    // Push typed command as "bottleOS <cwd> > command"
                     if (inst->input_pos > 0) {
                         inst->input_buffer[inst->input_pos] = '\0';
-                        char cmdline[INPUT_BUFFER_SIZE + 4];
-                        strncpy(cmdline, "> ", sizeof(cmdline));
-                        cmdline[sizeof(cmdline)-1] = '\0';
+
+                        char cmdline[INPUT_BUFFER_SIZE + 64];
+                        const char *cwd = fs_get_current_dir();
+                        strncpy(cmdline, "bottleOS ", sizeof(cmdline));
+                        strncat(cmdline, cwd, sizeof(cmdline)-strlen(cmdline)-1);
+                        strncat(cmdline, " > ", sizeof(cmdline)-strlen(cmdline)-1);
                         strncat(cmdline, inst->input_buffer, sizeof(cmdline)-strlen(cmdline)-1);
+
                         history_push(inst, cmdline);
 
                         // Process the command
@@ -243,19 +273,45 @@ void shell_app_draw(void) {
         }
     }
 
-    // Render history
+    // wrap text
     int y = 6;
     int start = inst->history_count > 16 ? inst->history_count - 16 : 0;
+
     for (int i = start; i < inst->history_count; ++i) {
-        graphics_draw_string(6, y, inst->history[i], RGB(220,220,220), 1);
-        y += LINE_HEIGHT;
+        const char *s = inst->history[i];
+        int col = 0;
+        for (const char *p = s; *p; p++) {
+            if (*p == '\n' || col >= SHELL_WIDTH) {
+                y += LINE_HEIGHT;
+                col = 0;
+                if (*p == '\n') continue;
+            }
+            char buf[2] = { *p, '\0' };
+            graphics_draw_string(6 + col * 8, y, buf, RGB(220,220,220), 1);
+            col++;
+        }
+        y += LINE_HEIGHT; // extra spacing after each history entry
     }
 
-    char typing[INPUT_BUFFER_SIZE + 4];
-    strncpy(typing, "> ", sizeof(typing));
-    typing[sizeof(typing)-1] = '\0';
+    // Render typing prompt with cwd
+    char typing[INPUT_BUFFER_SIZE + 64];
+    const char *cwd = fs_get_current_dir();
+    strncpy(typing, "bottleOS ", sizeof(typing));
+    strncat(typing, cwd, sizeof(typing)-strlen(typing)-1);
+    strncat(typing, " > ", sizeof(typing)-strlen(typing)-1);
     if (inst->input_pos > 0) {
         strncat(typing, inst->input_buffer, sizeof(typing)-strlen(typing)-1);
     }
-    graphics_draw_string(6, y, typing, RGB(200,255,200), 1);
+
+    int col = 0;
+    for (const char *p = typing; *p; p++) {
+        if (*p == '\n' || col >= SHELL_WIDTH) {
+            y += LINE_HEIGHT;
+            col = 0;
+            if (*p == '\n') continue;
+        }
+        char buf[2] = { *p, '\0' };
+        graphics_draw_string(6 + col * 8, y, buf, RGB(200,255,200), 1);
+        col++;
+    }
 }
