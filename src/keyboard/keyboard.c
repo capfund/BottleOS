@@ -1,8 +1,6 @@
 #include "keyboard.h"
 #include "../clib/clib.h"
 #include "../dwm/event.h"
-#include "../isr/isr.h"
-#include "../isr/isr_kb.h"
 
 static int shift_pressed = 0;
 static int ctrl_pressed = 0;
@@ -32,11 +30,6 @@ char keyboard_scancode_to_ascii(unsigned char scancode) {
         if (shift_pressed ^ caps_lock_on) c -= 32;
     } else if (shift_pressed) c = shifted[scancode];
     return c;
-}
-
-void keyboard_init(void) {
-    keyboard_init_irq();
-    isr_enable_interrupts();
 }
 
 int keyboard_is_shift_pressed(void) { return shift_pressed; }

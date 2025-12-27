@@ -9,8 +9,6 @@
 #include "dwm/dwm.h"
 #include "fs/fs.h"
 
-extern void isr_init(void);
-
 // compatibility reasons
 int light_mode = 0;
 #define MAX_CLICKS 64
@@ -58,65 +56,6 @@ void kernel_main(uint32_t magic, uint32_t addr) {
 
     // tests and inits
     graphics_set_driver(&graphics_vesa_driver);
-
-    /*MousePacket pkt;
-    if (mouse_init() != 0) {
-        for (;;); // halt (placeholder)
-    }
-
-    Button myButton = {
-        .x = 100, .y = 50,
-        .width = 120, .height = 40,
-        .label = "Click Me!",
-        .bg_color = RGB(50, 50, 200),
-        .text_color = RGB(255, 255, 255),
-        .border_rad = 40
-    };
-
-    int mouse_x = 300;
-    int mouse_y = 200;
-
-    while (1) {
-        graphics_clear_screen(RGB(0,12,255));
-        graphics_draw_string(20, 20, "ever tried chicken?", RGB(255,255,255), 2);
-        draw_button(&myButton);
-        graphics_draw_rounded_rect(250, 150, 200, 100, 20, RGB(0,255,0));
-
-        while (mouse_poll(&pkt) == 1) {
-            mouse_x += pkt.dx;
-            mouse_y -= pkt.dy;
-
-            // Clamp to screen
-            if (mouse_x < 0) mouse_x = 0;
-            if (mouse_x > 1023) mouse_x = 1023;
-            if (mouse_y < 0) mouse_y = 0;
-            if (mouse_y > 767) mouse_y = 767;
-
-            // Left-click: record click position
-            if (pkt.left != 0 && num_clicks < MAX_CLICKS) {
-                clicks[num_clicks].x = mouse_x;
-                clicks[num_clicks].y = mouse_y;
-                num_clicks++;
-            } else if (pkt.left != 0 && num_clicks >= MAX_CLICKS) {
-                num_clicks = 0;
-                clicks[num_clicks].x = mouse_x;
-                clicks[num_clicks].y = mouse_y;
-                num_clicks++;
-            }
-
-            if (pkt.left != 0) {
-                if (clicked(&myButton, mouse_x, mouse_y)) {
-                    myButton.bg_color = RGB(200, 50, 50); // change color on click
-                }
-            }
-        }
-
-        graphics_draw_cursor(mouse_x, mouse_y, RGB(255,255,255));
-
-        graphics_present();
-    }*/
-    
-    isr_init();
     fs_init();
     dwm_init();
 
