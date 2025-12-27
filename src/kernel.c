@@ -9,6 +9,8 @@
 #include "dwm/dwm.h"
 #include "fs/fs.h"
 
+extern void isr_init(void);
+
 // compatibility reasons
 int light_mode = 0;
 #define MAX_CLICKS 64
@@ -114,6 +116,7 @@ void kernel_main(uint32_t magic, uint32_t addr) {
         graphics_present();
     }*/
     
+    isr_init();
     fs_init();
     dwm_init();
 
