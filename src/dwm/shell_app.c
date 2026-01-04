@@ -217,7 +217,14 @@ static void process_command(ShellInstance *inst, const char *cmd) {
         } else {
             int res = fs_create_directory(dirname);
             if (res != 0) {
-                history_push(inst, "Error creating directory");
+                char numbuf[16];
+                char msgbuf[32];
+
+                utoa_dec((unsigned int)res, numbuf);
+                strcpy(msgbuf, "Error creating directory: ");
+                str_append(msgbuf, numbuf, sizeof(msgbuf));
+
+                history_push(inst, msgbuf);
             }
         }
     } else if (strncmp(cmd, "rmdir", 5) == 0 && (cmd[5] == ' ' || cmd[5] == '\0')) {
